@@ -3,58 +3,67 @@ use std::cell::{RefCell, RefMut};
 use crate::player::{PuppyPlayer, Owner};
 use crate::Player;
 use zkwasm_rest_abi::{ MERKLE_MAP, WithdrawInfo };
-use serde::{Serialize};
+use serde::{Serialize, Serializer, ser::SerializeSeq};
+use core::slice::IterMut;
 use crate::player::PlayerData;
 use crate::config::{get_action_duration, get_action_reward};
 use zkwasm_rust_sdk::require;
+use zkwasm_rest_abi::StorageData;
+
+// Custom serializer for `[u64; 2]` as a [String; 2].
+fn serialize_u64_array_as_string<S>(value: &[u64; 2], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        for e in value.iter() {
+            seq.serialize_element(&e.to_string())?;
+        }
+        seq.end()
+    }
+
 
 #[derive(Serialize, Clone)]
 pub struct QueryPlayerState {
-    pid: String,
+    #[serde(serialize_with="serialize_u64_array_as_string")]
+    pid: [u64;2],
     data: PlayerData,
-}
-
-fn parse_player_id(pid: &str) -> [u64; 2] {
-    let parts: Vec<&str> = pid.split('-').collect();
-    let id0 = parts[0].parse::<u64>().unwrap();
-    let id1 = parts[1].parse::<u64>().unwrap();
-    [id0, id1]
 }
 
 impl QueryPlayerState {
     fn from(p: &PuppyPlayer) -> Self {
         QueryPlayerState {
-            pid: format!("{}-{}", p.player_id[0], p.player_id[1]),
+            pid: [p.player_id[0], p.player_id[1]],
             data: p.data.clone()
         }
     }
+}
 
-    fn compact(&self, buf: &mut Vec<u64>) {
-        let pid = parse_player_id(&self.pid);
-        buf.push(pid[0]);
-        buf.push(pid[1]);
+impl StorageData for QueryPlayerState {
+
+    fn to_data(&self, buf: &mut Vec<u64>) {
+        buf.push(self.pid[0]);
+        buf.push(self.pid[1]);
         buf.push(self.data.action);
         buf.push(self.data.last_lottery_timestamp);
         buf.push(self.data.last_action_timestamp);
         buf.push(self.data.balance);
         buf.push(self.data.progress);
-        zkwasm_rust_sdk::dbg!("compact {:?}", buf);
     }
 
-    fn fetch(buf: &mut Vec<u64>) -> QueryPlayerState {
-        zkwasm_rust_sdk::dbg!("fetch {:?}", buf);
-        let progress = buf.pop().unwrap();
-        let balance = buf.pop().unwrap();
-        let last_action_timestamp = buf.pop().unwrap();
-        let last_lottery_timestamp = buf.pop().unwrap();
-        let action = buf.pop().unwrap();
-        let mut pid = [
-            buf.pop().unwrap(),
-            buf.pop().unwrap()
+    fn from_data(u64data: &mut IterMut<u64>) -> QueryPlayerState {
+        let pid = [
+            *u64data.next().unwrap(),
+            *u64data.next().unwrap()
         ];
-        pid.reverse();
+
+        let action = *u64data.next().unwrap();
+        let last_lottery_timestamp = *u64data.next().unwrap();
+        let last_action_timestamp = *u64data.next().unwrap();
+        let balance = *u64data.next().unwrap();
+        let progress = *u64data.next().unwrap();
         QueryPlayerState {
-            pid: format!("{}-{}", pid[0], pid[1]),
+            pid,
             data: PlayerData {
                 action,
                 last_lottery_timestamp,
@@ -140,10 +149,10 @@ impl GlobalState {
     pub fn store_into_kvpair(&self) {
         let n = self.player_list.len();
         let mut v = Vec::with_capacity(n * 7 + 1);
-        for e in self.player_list.iter() {
-            e.compact(&mut v);
-        }
         v.push(self.counter);
+        for e in self.player_list.iter() {
+            e.to_data(&mut v);
+        }
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
         let root = kvpair.merkle.root.clone();
@@ -154,10 +163,11 @@ impl GlobalState {
         let kvpair = unsafe { &mut MERKLE_MAP };
         let mut data = kvpair.get(&[0, 0, 0, 0]);
         if !data.is_empty() {
-            let counter = data.pop().unwrap();
+            let mut u64data = data.iter_mut();
+            let counter = *u64data.next().unwrap();
             let mut player_list = vec![];
-            while !data.is_empty() {
-                player_list.push(QueryPlayerState::fetch(&mut data))
+            while u64data.len() != 0 {
+                player_list.push(QueryPlayerState::from_data(&mut u64data))
             }
             self.counter = counter;
             self.player_list = player_list;
@@ -243,7 +253,7 @@ impl Transaction {
                 let mut state = GLOBAL_STATE.0.borrow_mut();
 
                 state.player_list.push(QueryPlayerState {
-                    pid: format!("{}-{}", player.player_id[0], player.player_id[1]),
+                    pid: [player.player_id[0], player.player_id[1]],
                     data: player.data.clone()
                 });
                 0
