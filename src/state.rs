@@ -79,7 +79,12 @@ impl GlobalState {
     }
 
     pub fn preempt() -> bool {
-        return false
+        let counter = GLOBAL_STATE.0.borrow().counter;
+        if counter % 30 == 0 {
+            return true
+        } else {
+            return false
+        }
     }
 
     pub fn flush_settlement() -> Vec<u8> {
