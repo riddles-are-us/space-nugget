@@ -287,7 +287,8 @@ impl Transaction {
                             player.data.progress = 0;
                             player.data.last_lottery_timestamp = 0;
                             player.store();
-                            PLAYER_LOTTERY_EXPIRED
+                            0 // return 0 here instead of return error
+                            // PLAYER_LOTTERY_EXPIRED
                         }
                     } else {
                         PLAYER_LOTTERY_PROGRESS_NOT_FULL
