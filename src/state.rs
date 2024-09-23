@@ -83,7 +83,6 @@ pub struct GlobalState {
 
 #[derive(Serialize)]
 pub struct QueryState {
-    player: PuppyPlayer,
     counter: u64,
     player_list: Vec<QueryPlayerState>,
 }
@@ -116,17 +115,20 @@ impl GlobalState {
         }
     }
 
-    pub fn get_state(pid: Vec<u64>) -> String {
-        let player = PuppyPlayer::get(&pid.try_into().unwrap()).unwrap();
+    pub fn snapshot() -> String {
         let player_list = GLOBAL_STATE.0.borrow().player_list.clone();
         let counter = GLOBAL_STATE.0.borrow().counter;
         serde_json::to_string({
             &QueryState {
-                player,
                 counter,
                 player_list
             }
         }).unwrap()
+    }
+
+    pub fn get_state(pid: Vec<u64>) -> String {
+        let player = PuppyPlayer::get(&pid.try_into().unwrap()).unwrap();
+        serde_json::to_string(&player).unwrap()
     }
 
     pub fn preempt() -> bool {
