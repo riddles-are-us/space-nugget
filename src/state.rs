@@ -134,7 +134,7 @@ impl GlobalState {
 
     pub fn preempt() -> bool {
         let counter = GLOBAL_STATE.0.borrow().counter;
-        if counter % 30 == 0 {
+        if counter % 300 == 0 {
             return true
         } else {
             return false
