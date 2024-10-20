@@ -75,54 +75,56 @@ impl StorageData for QueryPlayerState {
     }
 }
 
+#[derive(Clone, Serialize, Default, Copy)]
+struct MemeInfo {
+    rank: u64,
+
+}
+
+impl StorageData for MemeInfo {
+    fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        MemeInfo {
+            rank: *u64data.next().unwrap(),
+        }
+    }
+    fn to_data(&self, data: &mut Vec<u64>) {
+        data.push(self.rank);
+    }
+}
+
+
 #[derive(Serialize)]
 pub struct GlobalState {
-    player_list: Vec<QueryPlayerState>,
+    meme_list: Vec<MemeInfo>,
     pub counter: u64
 }
 
 #[derive(Serialize)]
 pub struct QueryState {
     counter: u64,
-    player_list: Vec<QueryPlayerState>,
+    meme_list: Vec<MemeInfo>,
 }
 
 impl GlobalState {
     pub fn new() -> Self {
         GlobalState {
-            player_list: vec![],
+            meme_list: [MemeInfo::default(); 24].to_vec(),
             counter: 0,
         }
     }
 
-    pub fn update_player_list(player: &mut PuppyPlayer) {
-        let player_data = QueryPlayerState::from(player);
-        let mut global_state = GLOBAL_STATE.0.borrow_mut();
-        let mut exist = false;
-
-        for p in global_state.player_list.iter_mut() {
-            if p.pid == player_data.pid {
-                *p = player_data.clone();
-                exist = true;
-            }
-        }
-        if exist == false {
-            for p in global_state.player_list.iter_mut() {
-              if p.data.progress < player_data.data.progress {
-                  *p = player_data.clone();
-              }
-              break;
-            }
-        }
+    pub fn update_meme_rank(index: u64) {
+        let mut state = GLOBAL_STATE.0.borrow_mut();
+        state.meme_list[index as usize].rank += 1;
     }
 
     pub fn snapshot() -> String {
-        let player_list = GLOBAL_STATE.0.borrow().player_list.clone();
+        let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
         let counter = GLOBAL_STATE.0.borrow().counter;
         serde_json::to_string({
             &QueryState {
                 counter,
-                player_list
+                meme_list
             }
         }).unwrap()
     }
@@ -150,10 +152,10 @@ impl GlobalState {
     }
 
     pub fn store_into_kvpair(&self) {
-        let n = self.player_list.len();
-        let mut v = Vec::with_capacity(n * 7 + 1);
+        let n = self.meme_list.len();
+        let mut v = Vec::with_capacity(n * 2 + 1);
         v.push(self.counter);
-        for e in self.player_list.iter() {
+        for e in self.meme_list.iter() {
             e.to_data(&mut v);
         }
         let kvpair = unsafe { &mut MERKLE_MAP };
@@ -168,12 +170,12 @@ impl GlobalState {
         if !data.is_empty() {
             let mut u64data = data.iter_mut();
             let counter = *u64data.next().unwrap();
-            let mut player_list = vec![];
+            let mut meme_list = vec![];
             while u64data.len() != 0 {
-                player_list.push(QueryPlayerState::from_data(&mut u64data))
+                meme_list.push(MemeInfo::from_data(&mut u64data))
             }
             self.counter = counter;
-            self.player_list = player_list;
+            self.meme_list = meme_list;
         }
     }
 
@@ -237,6 +239,8 @@ impl Transaction {
         let mut data = vec![];
         if command == WITHDRAW {
             data = vec![params[1], params[2], params[3]] // address of withdraw(Note:amount in params[1])
+        } else {
+            data = vec![params[1]] // meme coin id
         }
 
         Transaction {
@@ -253,12 +257,6 @@ impl Transaction {
             None => {
                 let player = Player::new(pkey);
                 player.store();
-                let mut state = GLOBAL_STATE.0.borrow_mut();
-
-                state.player_list.push(QueryPlayerState {
-                    pid: [player.player_id[0], player.player_id[1]],
-                    data: player.data.clone()
-                });
                 0
             }
         }
@@ -270,6 +268,7 @@ impl Transaction {
             let state = GLOBAL_STATE.0.borrow();
             state.counter
         };
+
         match player.as_mut() {
             None => ERROR_PLAYER_NOT_EXIST,
             Some(player) => {
@@ -342,7 +341,8 @@ impl Transaction {
                         } else if player.data.progress > 1000 {
                             player.data.progress = 1000;
                         }
-                        GlobalState::update_player_list(player);
+                        GlobalState::update_meme_rank(self.data[0]);
+
                         player.check_and_inc_nonce(self.nonce);
                         player.store();
                         0
