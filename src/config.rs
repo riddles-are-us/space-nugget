@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::state::GLOBAL_STATE;
+
 const ACTIONS_SIZE: usize = 5;
 const NAME_SIZE: usize = 5;
 
@@ -24,7 +26,8 @@ lazy_static::lazy_static! {
 
 impl Config {
     pub fn to_json_string() -> String {
-        serde_json::to_string(&CONFIG.clone()).unwrap()
+        let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
+        serde_json::to_string(&meme_list).unwrap()
     }
 
     // enable timer tick

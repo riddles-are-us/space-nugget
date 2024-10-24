@@ -76,9 +76,8 @@ impl StorageData for QueryPlayerState {
 }
 
 #[derive(Clone, Serialize, Default, Copy)]
-struct MemeInfo {
-    rank: u64,
-
+pub struct MemeInfo {
+    pub rank: u64,
 }
 
 impl StorageData for MemeInfo {
@@ -95,7 +94,7 @@ impl StorageData for MemeInfo {
 
 #[derive(Serialize)]
 pub struct GlobalState {
-    meme_list: Vec<MemeInfo>,
+    pub meme_list: Vec<MemeInfo>,
     pub counter: u64
 }
 
@@ -108,7 +107,7 @@ pub struct QueryState {
 impl GlobalState {
     pub fn new() -> Self {
         GlobalState {
-            meme_list: [MemeInfo::default(); 24].to_vec(),
+            meme_list: [MemeInfo::default(); 36].to_vec(),
             counter: 0,
         }
     }
@@ -188,7 +187,7 @@ impl GlobalState {
     }
 }
 
-pub struct SafeState (RefCell<GlobalState>);
+pub struct SafeState (pub RefCell<GlobalState>);
 unsafe impl Sync for SafeState {}
 
 lazy_static::lazy_static! {
