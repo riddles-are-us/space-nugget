@@ -235,12 +235,11 @@ impl Transaction {
     pub fn decode(params: [u64; 4]) -> Self {
         let command = params[0] & 0xff;
         let nonce = params[0] >> 16;
-        let mut data = vec![];
-        if command == WITHDRAW {
-            data = vec![params[1], params[2], params[3]] // address of withdraw(Note:amount in params[1])
+        let data = if command == WITHDRAW {
+            vec![params[1], params[2], params[3]] // address of withdraw(Note:amount in params[1])
         } else {
-            data = vec![params[1]] // meme coin id
-        }
+            vec![params[1]] // meme coin id
+        };
 
         Transaction {
             command,
@@ -261,7 +260,7 @@ impl Transaction {
         }
     }
 
-    pub fn action(&self, pkey: &[u64; 4], action: u64, rand: &[u64; 4]) -> u32 {
+    pub fn action(&self, pkey: &[u64; 4], action: u64, _rand: &[u64; 4]) -> u32 {
         let mut player = PuppyPlayer::get(pkey);
         let counter = {
             let state = GLOBAL_STATE.0.borrow();
@@ -274,7 +273,6 @@ impl Transaction {
                 // Check for Lottery action
                 if action == LOTTERY {
                     // This is the selected player; allow them to open the blind box
-                    zkwasm_rust_sdk::dbg!("Player {:?} is opening the blind box", pkey);
                     if player.data.progress == 1000 {
                         if player.data.last_lottery_timestamp + 10 > counter {
                             // Update player's state to reflect that the lottery is complete
@@ -340,9 +338,9 @@ impl Transaction {
                         } else if player.data.progress > 1000 {
                             player.data.progress = 1000;
                         }
-                        GlobalState::update_meme_rank(self.data[0]);
 
                         player.check_and_inc_nonce(self.nonce);
+                        GlobalState::update_meme_rank(self.data[0]);
                         player.store();
                         0
                     }
