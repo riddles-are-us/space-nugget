@@ -95,7 +95,8 @@ impl StorageData for MemeInfo {
 #[derive(Serialize)]
 pub struct GlobalState {
     pub meme_list: Vec<MemeInfo>,
-    pub counter: u64
+    pub counter: u64,
+    pub txsize: u64,
 }
 
 #[derive(Serialize)]
@@ -109,6 +110,7 @@ impl GlobalState {
         GlobalState {
             meme_list: [MemeInfo::default(); 36].to_vec(),
             counter: 0,
+            txsize: 0,
         }
     }
 
@@ -135,7 +137,8 @@ impl GlobalState {
 
     pub fn preempt() -> bool {
         let counter = GLOBAL_STATE.0.borrow().counter;
-        if counter % 300 == 0 {
+        let txsize = GLOBAL_STATE.0.borrow().txsize;
+        if counter % 4000 == 0 || txsize >= 400 {
             return true
         } else {
             return false
@@ -353,20 +356,33 @@ impl Transaction {
         GLOBAL_STATE.0.borrow_mut().counter += 1;
     }
 
+    pub fn inc_tx_number(&self) {
+        GLOBAL_STATE.0.borrow_mut().txsize += 1;
+    }
+
     pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> u32 {
-        let res = match self.command {
-            CREATE_PLAYER => self.create_player(pkey),
-            SHAKE_FEET => self.action(pkey, SHAKE_FEET, rand),
-            JUMP => self.action(pkey, JUMP, rand),
-            SHAKE_HEADS => self.action(pkey, SHAKE_HEADS, rand),
-            POST_COMMENTS => self.action(pkey, POST_COMMENTS, rand),
-            LOTTERY => self.action(pkey, LOTTERY, rand),
-            CANCELL_LOTTERY => self.action(pkey, CANCELL_LOTTERY, rand),
-            WITHDRAW => self.action(pkey, WITHDRAW, rand),
-            _ => {
-                self.tick();
-                0
+        let res = if self.command == SWAY {
+            self.tick();
+            0
+        } else {
+            let res = match self.command {
+                CREATE_PLAYER => self.create_player(pkey),
+                SHAKE_FEET => self.action(pkey, SHAKE_FEET, rand),
+                JUMP => self.action(pkey, JUMP, rand),
+                SHAKE_HEADS => self.action(pkey, SHAKE_HEADS, rand),
+                POST_COMMENTS => self.action(pkey, POST_COMMENTS, rand),
+                LOTTERY => self.action(pkey, LOTTERY, rand),
+                CANCELL_LOTTERY => self.action(pkey, CANCELL_LOTTERY, rand),
+                WITHDRAW => self.action(pkey, WITHDRAW, rand),
+                _ => {
+                    self.tick();
+                    0
+                }
+            };
+            if res == 0 {
+                self.inc_tx_number();
             }
+            res
         };
         let root = unsafe { &mut MERKLE_MAP.merkle.root };
         zkwasm_rust_sdk::dbg!("root after process {:?}\n", root);
