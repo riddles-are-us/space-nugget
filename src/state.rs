@@ -162,8 +162,6 @@ impl GlobalState {
         }
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
-        let root = kvpair.merkle.root.clone();
-        zkwasm_rust_sdk::dbg!("root after store: {:?}\n", root);
     }
 
     pub fn fetch(&mut self) {
@@ -314,7 +312,6 @@ impl Transaction {
                             let amount = self.data[0] & 0xffffffff;
                             unsafe { require(balance >= amount) };
                             player.data.balance -= amount;
-                            zkwasm_rust_sdk::dbg!("balance: {}, amount is {:?}", balance, amount);
                             let withdrawinfo = WithdrawInfo::new(&[
                                 self.data[0],
                                 self.data[1],
@@ -375,8 +372,7 @@ impl Transaction {
                 CANCELL_LOTTERY => self.action(pkey, CANCELL_LOTTERY, rand),
                 WITHDRAW => self.action(pkey, WITHDRAW, rand),
                 _ => {
-                    self.tick();
-                    0
+                    unreachable!();
                 }
             };
             if res == 0 {
@@ -385,7 +381,11 @@ impl Transaction {
             res
         };
         let root = unsafe { &mut MERKLE_MAP.merkle.root };
-        zkwasm_rust_sdk::dbg!("root after process {:?}\n", root);
+        zkwasm_rust_sdk::dbg!("tx info {}, {}\n",
+            { GLOBAL_STATE.0.borrow().txsize },
+            { GLOBAL_STATE.0.borrow().counter}
+        );
+        zkwasm_rust_sdk::dbg!("post root {:?}\n", root);
         res
     }
 }
