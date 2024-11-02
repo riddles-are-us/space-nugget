@@ -138,7 +138,7 @@ impl GlobalState {
     pub fn preempt() -> bool {
         let counter = GLOBAL_STATE.0.borrow().counter;
         let txsize = GLOBAL_STATE.0.borrow().txsize;
-        if counter % 300 == 0 || txsize >= 300 {
+        if counter % 600 == 0 || txsize >= 300 {
             return true
         } else {
             return false
@@ -377,6 +377,7 @@ impl Transaction {
             };
             if res == 0 {
                 self.inc_tx_number();
+                self.tick();
             }
             res
         };
