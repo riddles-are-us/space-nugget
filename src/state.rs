@@ -381,12 +381,14 @@ impl Transaction {
             }
             res
         };
+        /* debug for tx error
         let root = unsafe { &mut MERKLE_MAP.merkle.root };
         zkwasm_rust_sdk::dbg!("tx info {}, {}\n",
             { GLOBAL_STATE.0.borrow().txsize },
             { GLOBAL_STATE.0.borrow().counter}
         );
         zkwasm_rust_sdk::dbg!("post root {:?}\n", root);
+        */
         res
     }
 }
