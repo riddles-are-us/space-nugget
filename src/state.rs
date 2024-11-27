@@ -1,79 +1,13 @@
+use crate::config::{get_action_duration, get_action_reward, ADMIN_PUBKEY};
+use crate::player::{Owner, PuppyPlayer};
 use crate::settlement::SettlementInfo;
-use std::cell::{RefCell};
-use crate::player::{PuppyPlayer, Owner};
 use crate::Player;
-use zkwasm_rest_abi::{ MERKLE_MAP, WithdrawInfo };
-use serde::{Serialize, Serializer, ser::SerializeSeq};
 use core::slice::IterMut;
-use crate::player::PlayerData;
-use crate::config::{get_action_duration, get_action_reward};
-use zkwasm_rust_sdk::require;
+use serde::Serialize;
+use std::cell::RefCell;
 use zkwasm_rest_abi::StorageData;
-
-// Custom serializer for `[u64; 2]` as a [String; 2].
-fn serialize_u64_array_as_string<S>(value: &[u64; 2], serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for e in value.iter() {
-            seq.serialize_element(&e.to_string())?;
-        }
-        seq.end()
-    }
-
-
-#[derive(Serialize, Clone)]
-pub struct QueryPlayerState {
-    #[serde(serialize_with="serialize_u64_array_as_string")]
-    pid: [u64;2],
-    data: PlayerData,
-}
-
-impl QueryPlayerState {
-    fn from(p: &PuppyPlayer) -> Self {
-        QueryPlayerState {
-            pid: [p.player_id[0], p.player_id[1]],
-            data: p.data.clone()
-        }
-    }
-}
-
-impl StorageData for QueryPlayerState {
-
-    fn to_data(&self, buf: &mut Vec<u64>) {
-        buf.push(self.pid[0]);
-        buf.push(self.pid[1]);
-        buf.push(self.data.action);
-        buf.push(self.data.last_lottery_timestamp);
-        buf.push(self.data.last_action_timestamp);
-        buf.push(self.data.balance);
-        buf.push(self.data.progress);
-    }
-
-    fn from_data(u64data: &mut IterMut<u64>) -> QueryPlayerState {
-        let pid = [
-            *u64data.next().unwrap(),
-            *u64data.next().unwrap()
-        ];
-
-        let action = *u64data.next().unwrap();
-        let last_lottery_timestamp = *u64data.next().unwrap();
-        let last_action_timestamp = *u64data.next().unwrap();
-        let balance = *u64data.next().unwrap();
-        let progress = *u64data.next().unwrap();
-        QueryPlayerState {
-            pid,
-            data: PlayerData {
-                action,
-                last_lottery_timestamp,
-                last_action_timestamp,
-                balance,
-                progress
-            }
-        }
-    }
-}
+use zkwasm_rest_abi::{WithdrawInfo, MERKLE_MAP};
+use zkwasm_rust_sdk::require;
 
 #[derive(Clone, Serialize, Default, Copy)]
 pub struct MemeInfo {
@@ -90,7 +24,6 @@ impl StorageData for MemeInfo {
         data.push(self.rank);
     }
 }
-
 
 #[derive(Serialize)]
 pub struct GlobalState {
@@ -122,12 +55,7 @@ impl GlobalState {
     pub fn snapshot() -> String {
         let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
         let counter = GLOBAL_STATE.0.borrow().counter;
-        serde_json::to_string({
-            &QueryState {
-                counter,
-                meme_list
-            }
-        }).unwrap()
+        serde_json::to_string(&QueryState { counter, meme_list }).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
@@ -139,9 +67,9 @@ impl GlobalState {
         let counter = GLOBAL_STATE.0.borrow().counter;
         let txsize = GLOBAL_STATE.0.borrow().txsize;
         if counter % 600 == 0 || txsize >= 300 {
-            return true
+            return true;
         } else {
-            return false
+            return false;
         }
     }
 
@@ -188,7 +116,7 @@ impl GlobalState {
     }
 }
 
-pub struct SafeState (pub RefCell<GlobalState>);
+pub struct SafeState(pub RefCell<GlobalState>);
 unsafe impl Sync for SafeState {}
 
 lazy_static::lazy_static! {
@@ -204,32 +132,35 @@ const POST_COMMENTS: u64 = 5;
 const LOTTERY: u64 = 6;
 const CANCELL_LOTTERY: u64 = 7;
 const WITHDRAW: u64 = 8;
+const DEPOSIT: u64 = 9;
 
-const ERROR_PLAYER_ALREADY_EXIST:u32 = 1;
-const ERROR_PLAYER_NOT_EXIST:u32 = 2;
-const ERROR_NOT_SELECTED_PLAYER:u32 = 3;
+const ERROR_PLAYER_ALREADY_EXIST: u32 = 1;
+const ERROR_PLAYER_NOT_EXIST: u32 = 2;
+const ERROR_NOT_SELECTED_PLAYER: u32 = 3;
 const SELECTED_PLAYER_NOT_EXIST: u32 = 4;
 const PLAYER_ACTION_NOT_FINISHED: u32 = 5;
 const PLAYER_LOTTERY_EXPIRED: u32 = 6;
 const PLAYER_LOTTERY_PROGRESS_NOT_FULL: u32 = 7;
+const PLAYER_NOT_ENOUGH_TICKET: u32 = 8;
 
 pub struct Transaction {
     command: u64,
     nonce: u64,
-    data: Vec<u64>
+    data: Vec<u64>,
 }
 
 impl Transaction {
     pub fn decode_error(e: u32) -> &'static str {
         match e {
-           ERROR_PLAYER_NOT_EXIST => "PlayerNotExist",
-           ERROR_PLAYER_ALREADY_EXIST => "PlayerAlreadyExist",
-           ERROR_NOT_SELECTED_PLAYER => "PlayerNotSelected",
-           SELECTED_PLAYER_NOT_EXIST => "SelectedPlayerNotExist",
-           PLAYER_ACTION_NOT_FINISHED => "PlayerActionNotFinished",
-           PLAYER_LOTTERY_EXPIRED => "PlayerLotteryExpired",
-           PLAYER_LOTTERY_PROGRESS_NOT_FULL => "PlayerLotteryProgressNotFull",
-           _ => "Unknown"
+            ERROR_PLAYER_NOT_EXIST => "PlayerNotExist",
+            ERROR_PLAYER_ALREADY_EXIST => "PlayerAlreadyExist",
+            ERROR_NOT_SELECTED_PLAYER => "PlayerNotSelected",
+            SELECTED_PLAYER_NOT_EXIST => "SelectedPlayerNotExist",
+            PLAYER_ACTION_NOT_FINISHED => "PlayerActionNotFinished",
+            PLAYER_LOTTERY_EXPIRED => "PlayerLotteryExpired",
+            PLAYER_LOTTERY_PROGRESS_NOT_FULL => "PlayerLotteryProgressNotFull",
+            PLAYER_NOT_ENOUGH_TICKET => "PlayerNotEnoughTicket",
+            _ => "Unknown",
         }
     }
 
@@ -245,7 +176,7 @@ impl Transaction {
         Transaction {
             command,
             nonce,
-            data
+            data,
         }
     }
 
@@ -291,7 +222,7 @@ impl Transaction {
                             player.data.last_lottery_timestamp = 0;
                             player.store();
                             0 // return 0 here instead of return error
-                            // PLAYER_LOTTERY_EXPIRED
+                              // PLAYER_LOTTERY_EXPIRED
                         }
                     } else {
                         PLAYER_LOTTERY_PROGRESS_NOT_FULL
@@ -302,21 +233,18 @@ impl Transaction {
                     player.data.last_lottery_timestamp = 0;
                     player.store();
                     0
-                } else if action == WITHDRAW {
+                }  else if action == WITHDRAW {
                     let mut player = PuppyPlayer::get(pkey);
                     match player.as_mut() {
                         None => ERROR_PLAYER_NOT_EXIST,
                         Some(player) => {
                             player.check_and_inc_nonce(self.nonce);
                             let balance = player.data.balance;
-                            let amount = self.data[0] & 0xffffffff;
+                            let amount = (self.data[0] & 0xffffffff) as u32;
                             unsafe { require(balance >= amount) };
                             player.data.balance -= amount;
-                            let withdrawinfo = WithdrawInfo::new(&[
-                                self.data[0],
-                                self.data[1],
-                                self.data[2]
-                            ]);
+                            let withdrawinfo =
+                                WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
                             SettlementInfo::append_settlement(withdrawinfo);
                             player.store();
                             0
@@ -324,12 +252,16 @@ impl Transaction {
                     }
                 } else {
                     let action_duration = get_action_duration();
-                    let action_reward = get_action_reward();
-
-                    if player.data.last_action_timestamp != 0
-                        && counter < player.data.last_action_timestamp + action_duration {
+                    if player.data.ticket < 1 {
+                        PLAYER_NOT_ENOUGH_TICKET
+                    } else if player.data.last_action_timestamp != 0
+                        && counter < player.data.last_action_timestamp + action_duration
+                    {
                         PLAYER_ACTION_NOT_FINISHED
                     } else {
+                        player.data.ticket -= 1;
+                        let action_reward = get_action_reward();
+
                         player.data.action = action;
                         player.data.last_action_timestamp = counter;
                         player.data.progress += action_reward;
@@ -348,6 +280,24 @@ impl Transaction {
             }
         }
     }
+
+    fn deposit(&self, pid: &[u64; 2]) -> Result<(), u32> {
+        let mut admin = PuppyPlayer::get_from_pid(pid).unwrap();
+        admin.check_and_inc_nonce(self.nonce);
+        let mut player = PuppyPlayer::get_from_pid(&[self.data[0], self.data[1]]);
+        match player.as_mut() {
+            None => Err(ERROR_PLAYER_NOT_EXIST),
+            Some(player) => {
+                player.check_and_inc_nonce(self.nonce);
+                player.data.ticket += 1;
+                player.store();
+                admin.store();
+                Ok(())
+            }
+        }
+    }
+
+
 
     pub fn tick(&self) {
         GLOBAL_STATE.0.borrow_mut().counter += 1;
@@ -371,6 +321,12 @@ impl Transaction {
                 LOTTERY => self.action(pkey, LOTTERY, rand),
                 CANCELL_LOTTERY => self.action(pkey, CANCELL_LOTTERY, rand),
                 WITHDRAW => self.action(pkey, WITHDRAW, rand),
+                DEPOSIT => {
+                    unsafe { require(*pkey == *ADMIN_PUBKEY) };
+                    self.deposit(&PuppyPlayer::pkey_to_pid(pkey))
+                        .map_or_else(|e| e, |_| 0)
+                },
+
                 _ => {
                     unreachable!();
                 }

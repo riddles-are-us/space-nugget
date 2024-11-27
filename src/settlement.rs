@@ -1,4 +1,3 @@
-use crate::state::GlobalState;
 use zkwasm_rest_abi::WithdrawInfo;
 pub struct SettlementInfo(Vec<WithdrawInfo>);
 
@@ -16,7 +15,6 @@ impl SettlementInfo {
             s.flush(&mut bytes);
         }
         sinfo.0 = vec![];
-        GlobalState::store();
         bytes
     }
 }

@@ -1,5 +1,7 @@
-import { query, LeHexBN } from "zkwasm-ts-server";
 import { Player } from "./api.js";
+//import { LeHexBN, ZKWasmAppRpc} from "zkwasm-minirollup-rpc";
+import { LeHexBN, ZKWasmAppRpc} from "zkwasm-ts-server";
+import { createAsyncThunk } from '@reduxjs/toolkit';
 
 const CREATE_PLAYER = 1n;
 const SHAKE_FEET = 2n;
@@ -8,9 +10,12 @@ const SHAKE_HEADS = 4n;
 const POST_COMMENTS = 5n;
 const LOTTERY = 6n;
 const WITHDRAW = 8n;
+const DEPOSIT = 9n;
 
 let account = "1234";
-let player = new Player(account);
+
+const rpc:any = new ZKWasmAppRpc("http://127.0.0.1:3000");
+let player = new Player(account, rpc, DEPOSIT, WITHDRAW);
 
 // Function to pause execution for a given duration
 function delay(ms: number) {
@@ -18,9 +23,6 @@ function delay(ms: number) {
 }
 
 async function main() {
-    let accountInfo = new LeHexBN(query(account).pkx).toU64Array();
-    console.log("account info:", accountInfo);
-
     console.log("Start run CREATE_PLAYER...");
     await player.runCommandAndCheckState(CREATE_PLAYER);
 

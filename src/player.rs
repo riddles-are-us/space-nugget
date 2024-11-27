@@ -1,15 +1,16 @@
-use crate::StorageData;
-use serde::{Serialize};
-use core::slice::IterMut;
 use crate::Player;
+use crate::StorageData;
+use core::slice::IterMut;
+use serde::Serialize;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
-    pub balance: u64,
+    pub balance: u32,
+    pub ticket: u32,
     pub action: u64,
     pub last_lottery_timestamp: u64, // last timestamp when this user allowed to pick a lottery
-    pub last_action_timestamp: u64, // last timestamp when this user allowed to pick a lottery
-    pub progress: u64
+    pub last_action_timestamp: u64,  // last timestamp when this user allowed to pick a lottery
+    pub progress: u64,
 }
 
 impl Default for PlayerData {
@@ -19,27 +20,32 @@ impl Default for PlayerData {
             last_lottery_timestamp: 0,
             last_action_timestamp: 0, // last timestamp when this user allowed to pick a lottery
             balance: 0,
-            progress: 0
+            ticket: 0,
+            progress: 0,
         }
     }
 }
 
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        let bt = *u64data.next().unwrap();
+        let balance = (bt >> 32) as u32;
+        let ticket = (bt & 0xffffffff) as u32;
         PlayerData {
+            progress: *u64data.next().unwrap(),
             action: *u64data.next().unwrap(),
             last_lottery_timestamp: *u64data.next().unwrap(),
             last_action_timestamp: *u64data.next().unwrap(),
-            balance: *u64data.next().unwrap(),
-            progress: *u64data.next().unwrap()
+            balance,
+            ticket,
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
+        data.push(((self.balance as u64) << 32) + (self.ticket as u64));
+        data.push(self.progress);
         data.push(self.action);
         data.push(self.last_lottery_timestamp);
         data.push(self.last_action_timestamp);
-        data.push(self.balance);
-        data.push(self.progress);
     }
 }
 

@@ -1,4 +1,4 @@
-import { ZKWasmAppRpc } from "zkwasm-ts-server";
+import { ZKWasmAppRpc, PlayerConvention } from "zkwasm-minirollup-rpc";
 import BN from "bn.js";
 
 const SWAY = 0n;
@@ -14,69 +14,16 @@ function bytesToHex(bytes: Array<number>): string  {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function createCommand(command: bigint, nonce: bigint) {
-  return (nonce << 16n) + command;
-}
-
 const rpc = new ZKWasmAppRpc("http://localhost:3000");
 
-export class Player {
-  processingKey: string;
-  constructor(key: string) {
-    this.processingKey = key
-  }
-
-  async getState(): Promise<any> {
-    // Get the state response
-    let state = await rpc.queryState(this.processingKey);
-
-    // Parse the response to ensure it is a plain JSON object
-    const parsedState = JSON.parse(JSON.stringify(state));
-
-    // Extract the data from the parsed response
-    const data = JSON.parse(parsedState.data);
-
-    return data;
-  }
-
-  async withdrawRewards(address: string, amount: bigint, nonce: bigint) {
-    let addressBN = new BN(address, 16);
-    let addressBE = addressBN.toArray("be", 20); // 20 bytes = 160 bits and split into 4, 8, 8
-    console.log("address is", address);
-    console.log("address big endian is", addressBE);
-    let firstLimb = BigInt('0x' + bytesToHex(addressBE.slice(0,4).reverse()));
-    let sndLimb = BigInt('0x' + bytesToHex(addressBE.slice(4,12).reverse()));
-    let thirdLimb = BigInt('0x' + bytesToHex(addressBE.slice(12, 20).reverse()));
-
-    /*
-    (32 bit amount | 32 bit highbit of address)
-    (64 bit mid bit of address (be))
-    (64 bit tail bit of address (be))
-    */
-
-    console.log("first is", firstLimb);
-    console.log("snd is", sndLimb);
-    console.log("third is", thirdLimb);
-
-    try {
-      let processStamp = await rpc.sendTransaction([
-        createCommand(WITHDRAW, nonce),
-        (firstLimb << 32n) + amount,
-        sndLimb,
-        thirdLimb
-      ], this.processingKey);
-      console.log("withdraw rewards processed at:", processStamp);
-    } catch(e) {
-      if (e instanceof Error) {
-        console.log(e.message);
-      }
-      console.log("collect reward error at address:", address);
-    }
+export class Player extends PlayerConvention {
+  constructor(key: string, rpc: ZKWasmAppRpc, deposit: bigint, withdraw: bigint) {
+    super(key, rpc, deposit, withdraw);
   }
 
   async runCommand(command: bigint, nonce: bigint) {
     try {
-      let processStamp = await rpc.sendTransaction([createCommand(command, nonce), 0n, 0n, 0n], this.processingKey);
+      let processStamp = await rpc.sendTransaction(new BigUint64Array([super.createCommand(nonce, command, 0n), 0n, 0n, 0n]), this.processingKey);
       console.log("command processed at:", processStamp);
     } catch(e) {
       let reason = "";
@@ -90,7 +37,7 @@ export class Player {
   // Check whether the current state is as expected
   async checkState(nonce: bigint, action: bigint, balance: bigint) {
     try {
-      let data = await this.getState();
+      let data= await this.getState();
       let nonce_after_command = data.player.nonce;
       let balance_after_command = data.player.data.balance;
       let action_after_command = data.player.data.action;
@@ -110,11 +57,9 @@ export class Player {
       await this.runCommand(command, 0n);
       await this.checkState(0n, 0n, 0n);
     } else if(command == WITHDRAW){
-      let data = await this.getState();
-      let nonce_before_command = BigInt(data.player.nonce);
       let balance = 9n // previous balance(10n) - amount(1n)
-      await this.withdrawRewards(address, amount, nonce_before_command);
-      await this.checkState(nonce_before_command + 1n, SWAY, balance);
+      let player:any = await super.withdrawRewards(address, amount);
+      await this.checkState(player.nonce + 1n, SWAY, balance);
     } else {
       let data = await this.getState();
       let nonce_before_command = BigInt(data.player.nonce);

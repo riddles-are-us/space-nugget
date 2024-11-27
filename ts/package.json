@@ -6,6 +6,7 @@
     "@types/sha256": "^0.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
+    "zkwasm-minirollup-rpc": "github:DelphinusLab/zkWasm-minirollup-rpc",
     "zkwasm-service-cli": "git+https://github.com/DelphinusLab/zkWasm-service-cli.git",
     "zkwasm-ts-server": "https://gitpkg.vercel.app/DelphinusLab/zkwasm-mini-rollup/ts?main"
   },
