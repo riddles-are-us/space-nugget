@@ -288,7 +288,6 @@ impl Transaction {
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
-                player.check_and_inc_nonce(self.nonce);
                 player.data.ticket += 1;
                 player.store();
                 admin.store();
