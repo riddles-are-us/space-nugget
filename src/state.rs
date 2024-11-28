@@ -169,6 +169,8 @@ impl Transaction {
         let nonce = params[0] >> 16;
         let data = if command == WITHDRAW {
             vec![params[1], params[2], params[3]] // address of withdraw(Note:amount in params[1])
+        } else if command == DEPOSIT {
+            vec![params[1], params[2], params[3]] // pkey[0], pkey[1], amount
         } else {
             vec![params[1]] // meme coin id
         };
