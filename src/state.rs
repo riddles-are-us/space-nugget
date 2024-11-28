@@ -290,7 +290,7 @@ impl Transaction {
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
-                player.data.ticket += 1;
+                player.data.ticket += self.data[2] as u32;
                 player.store();
                 admin.store();
                 Ok(())
