@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
 pub struct Config {
     actions: [&'static str; ACTIONS_SIZE],
     name: [&'static str; NAME_SIZE],
-    action_reward: u64,
+    action_reward: u32,
     action_duration: u64,
 }
 
@@ -47,6 +47,6 @@ pub fn get_action_duration() -> u64 {
     CONFIG.action_duration
 }
 
-pub fn get_action_reward() -> u64 {
+pub fn get_action_reward() -> u32 {
     CONFIG.action_reward
 }

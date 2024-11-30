@@ -194,7 +194,7 @@ impl Transaction {
         }
     }
 
-    pub fn action(&self, pkey: &[u64; 4], action: u64, _rand: &[u64; 4]) -> u32 {
+    pub fn action(&self, pkey: &[u64; 4], action: u64, rand: &[u64; 4]) -> u32 {
         let mut player = PuppyPlayer::get(pkey);
         let counter = {
             let state = GLOBAL_STATE.0.borrow();
@@ -210,12 +210,21 @@ impl Transaction {
                     if player.data.progress == 1000 {
                         if player.data.last_lottery_timestamp + 10 > counter {
                             // Update player's state to reflect that the lottery is complete
-                            player.data.balance += 10; // change 10 to random reward
+                            player.check_and_inc_nonce(self.nonce);
                             player.data.action = SWAY;
                             player.data.progress = 0;
                             player.data.last_lottery_timestamp = 0;
                             player.data.last_action_timestamp = 0;
-                            player.check_and_inc_nonce(self.nonce);
+                            if player.data.lottery_info > 0 {
+                                let data = (self.data[0] & 0xffffffff00000000) | (player.data.lottery_info as u64);
+                                let withdrawinfo =
+                                    WithdrawInfo::new(&[data, self.data[1], self.data[2]], 1);
+                                SettlementInfo::append_settlement(withdrawinfo);
+                                player.data.lottery_info = 0;
+                            } else {
+                                player.data.balance += 10; // change 10 to random reward
+                            }
+
                             player.store();
                             0
                         } else {
@@ -274,6 +283,11 @@ impl Transaction {
                         }
 
                         player.check_and_inc_nonce(self.nonce);
+
+                        // set lottery_info if the last 16 bit are 1
+                        if (rand[1] & 0xff) == 0xff {
+                            player.data.lottery_info += 1;
+                        }
                         GlobalState::update_meme_rank(self.data[0]);
                         player.store();
                         0
