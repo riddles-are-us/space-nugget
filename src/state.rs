@@ -218,7 +218,7 @@ impl Transaction {
                             if player.data.lottery_info > 0 {
                                 let data = (self.data[0] & 0xffffffff00000000) | (player.data.lottery_info as u64);
                                 let withdrawinfo =
-                                    WithdrawInfo::new(&[data, self.data[1], self.data[2]], 1);
+                                    WithdrawInfo::new(&[data, self.data[1], self.data[2]], 1 << 8);
                                 SettlementInfo::append_settlement(withdrawinfo);
                                 player.data.lottery_info = 0;
                             } else {
