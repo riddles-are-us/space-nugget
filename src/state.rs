@@ -133,6 +133,7 @@ const LOTTERY: u64 = 6;
 const CANCELL_LOTTERY: u64 = 7;
 const WITHDRAW: u64 = 8;
 const DEPOSIT: u64 = 9;
+const WITHDRAW_LOTTERY: u64 = 8;
 
 const ERROR_PLAYER_ALREADY_EXIST: u32 = 1;
 const ERROR_PLAYER_NOT_EXIST: u32 = 2;
@@ -215,12 +216,10 @@ impl Transaction {
                             player.data.progress = 0;
                             player.data.last_lottery_timestamp = 0;
                             player.data.last_action_timestamp = 0;
-                            if player.data.lottery_info > 0 {
-                                let data = (self.data[0] & 0xffffffff00000000) | (player.data.lottery_info as u64);
-                                let withdrawinfo =
-                                    WithdrawInfo::new(&[data, self.data[1], self.data[2]], 1 << 8);
-                                SettlementInfo::append_settlement(withdrawinfo);
-                                player.data.lottery_info = 0;
+
+                            // set lottery_info if the last 16 bit are 1
+                            if (rand[1] & 0xff) > 0xf0 {
+                                player.data.lottery_info += 10; // change 10 to random reward
                             } else {
                                 player.data.balance += 10; // change 10 to random reward
                             }
@@ -261,6 +260,23 @@ impl Transaction {
                             0
                         }
                     }
+                } else if action == WITHDRAW_LOTTERY {
+                    let mut player = PuppyPlayer::get(pkey);
+                    match player.as_mut() {
+                        None => ERROR_PLAYER_NOT_EXIST,
+                        Some(player) => {
+                            player.check_and_inc_nonce(self.nonce);
+                            let balance = player.data.lottery_info;
+                            let amount = (self.data[0] & 0xffffffff) as u32;
+                            unsafe { require(balance >= amount) };
+                            player.data.lottery_info -= amount;
+                            let withdrawinfo =
+                                WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 1<<8);
+                            SettlementInfo::append_settlement(withdrawinfo);
+                            player.store();
+                            0
+                        }
+                    }
                 } else {
                     let action_duration = get_action_duration();
                     if player.data.ticket < 1 {
@@ -284,10 +300,6 @@ impl Transaction {
 
                         player.check_and_inc_nonce(self.nonce);
 
-                        // set lottery_info if the last 16 bit are 1
-                        if (rand[1] & 0xff) == 0xff {
-                            player.data.lottery_info += 1;
-                        }
                         GlobalState::update_meme_rank(self.data[0]);
                         player.store();
                         0
