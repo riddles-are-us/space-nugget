@@ -71,6 +71,11 @@ async function processTopUpEvent(event: EventLog) {
 
     console.log(`TopUp event received: pid_1=${pid_1.toString()}, pid_2=${pid_2.toString()}, amount=${amount.toString()} wei`);
 
+    if(l1token !== (await proxyContract._tokens(0))) {
+      console.log('Skip not the right token: ', l1token);
+      return;
+    }
+
     // Check if this transaction is already in the database and in 'pending' or 'in-progress' state
     let tx = await findTxByHash(event.transactionHash);
     
