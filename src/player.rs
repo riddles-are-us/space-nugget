@@ -21,7 +21,7 @@ impl Default for PlayerData {
             last_lottery_timestamp: 0,
             last_action_timestamp: 0, // last timestamp when this user allowed to pick a lottery
             balance: 0,
-            ticket: 5,
+            ticket: 50,
             lottery_info: 0,
             progress: 0,
         }

@@ -7,7 +7,7 @@ const NAME_SIZE: usize = 5;
 
 lazy_static::lazy_static! {
     pub static ref ADMIN_PUBKEY: [u64; 4] = {
-        let bytes = include_bytes!("./admin.prikey");
+        let bytes = include_bytes!("./admin.pubkey");
         // Interpret the bytes as an array of u64
         let u64s = unsafe { std::slice::from_raw_parts(bytes.as_ptr() as *const u64, 4) };
         u64s.try_into().unwrap()

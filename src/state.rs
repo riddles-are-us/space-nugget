@@ -133,7 +133,7 @@ const LOTTERY: u64 = 6;
 const CANCELL_LOTTERY: u64 = 7;
 const WITHDRAW: u64 = 8;
 const DEPOSIT: u64 = 9;
-const WITHDRAW_LOTTERY: u64 = 8;
+const WITHDRAW_LOTTERY: u64 = 10;
 
 const ERROR_PLAYER_ALREADY_EXIST: u32 = 1;
 const ERROR_PLAYER_NOT_EXIST: u32 = 2;
@@ -219,6 +219,7 @@ impl Transaction {
 
                             // set lottery_info if the last 16 bit are 1
                             if (rand[1] & 0xff) > 0xf0 {
+                                //zkwasm_rust_sdk::dbg!("rand is {}", {rand[1]});
                                 player.data.lottery_info += 10; // change 10 to random reward
                             } else {
                                 player.data.balance += 10; // change 10 to random reward
