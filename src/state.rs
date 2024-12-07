@@ -168,7 +168,7 @@ impl Transaction {
     pub fn decode(params: [u64; 4]) -> Self {
         let command = params[0] & 0xff;
         let nonce = params[0] >> 16;
-        let data = if command == WITHDRAW {
+        let data = if command == WITHDRAW || command == WITHDRAW_LOTTERY {
             vec![params[1], params[2], params[3]] // address of withdraw(Note:amount in params[1])
         } else if command == DEPOSIT {
             vec![params[1], params[2], params[3]] // pkey[0], pkey[1], amount
@@ -349,6 +349,7 @@ impl Transaction {
                 LOTTERY => self.action(pkey, LOTTERY, rand),
                 CANCELL_LOTTERY => self.action(pkey, CANCELL_LOTTERY, rand),
                 WITHDRAW => self.action(pkey, WITHDRAW, rand),
+                WITHDRAW_LOTTERY => self.action(pkey, WITHDRAW_LOTTERY, rand),
                 DEPOSIT => {
                     unsafe { require(*pkey == *ADMIN_PUBKEY) };
                     self.deposit(&PuppyPlayer::pkey_to_pid(pkey))
