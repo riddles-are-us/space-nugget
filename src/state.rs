@@ -30,12 +30,14 @@ pub struct GlobalState {
     pub meme_list: Vec<MemeInfo>,
     pub counter: u64,
     pub txsize: u64,
+    pub airdrop: u64,
 }
 
 #[derive(Serialize)]
 pub struct QueryState {
     counter: u64,
     meme_list: Vec<MemeInfo>,
+    airdrop: u64,
 }
 
 impl GlobalState {
@@ -44,6 +46,7 @@ impl GlobalState {
             meme_list: [MemeInfo::default(); 36].to_vec(),
             counter: 0,
             txsize: 0,
+            airdrop: 10000000
         }
     }
 
@@ -55,7 +58,8 @@ impl GlobalState {
     pub fn snapshot() -> String {
         let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
         let counter = GLOBAL_STATE.0.borrow().counter;
-        serde_json::to_string(&QueryState { counter, meme_list }).unwrap()
+        let airdrop = GLOBAL_STATE.0.borrow().airdrop;
+        serde_json::to_string(&QueryState { counter, meme_list, airdrop }).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
@@ -85,6 +89,7 @@ impl GlobalState {
         let n = self.meme_list.len();
         let mut v = Vec::with_capacity(n * 2 + 1);
         v.push(self.counter);
+        v.push(self.airdrop);
         for e in self.meme_list.iter() {
             e.to_data(&mut v);
         }
@@ -98,11 +103,13 @@ impl GlobalState {
         if !data.is_empty() {
             let mut u64data = data.iter_mut();
             let counter = *u64data.next().unwrap();
+            let airdrop = *u64data.next().unwrap();
             let mut meme_list = vec![];
             while u64data.len() != 0 {
                 meme_list.push(MemeInfo::from_data(&mut u64data))
             }
             self.counter = counter;
+            self.airdrop = airdrop;
             self.meme_list = meme_list;
         }
     }
@@ -188,7 +195,13 @@ impl Transaction {
         match player {
             Some(_) => ERROR_PLAYER_ALREADY_EXIST,
             None => {
-                let player = Player::new(pkey);
+                let mut player = Player::new(pkey);
+                if GLOBAL_STATE.0.borrow().airdrop > 50 {
+                    player.data.balance = 50;
+                    GLOBAL_STATE.0.borrow_mut().airdrop -= 50;
+                } else {
+                    player.data.balance = 0;
+                }
                 player.store();
                 0
             }
@@ -224,7 +237,6 @@ impl Transaction {
                             } else {
                                 player.data.balance += 10; // change 10 to random reward
                             }
-
                             player.store();
                             0
                         } else {
