@@ -7,6 +7,10 @@ impl SettlementInfo {
     pub fn append_settlement(info: WithdrawInfo) {
         unsafe { SETTLEMENT.0.push(info) };
     }
+    pub fn settlement_size() -> usize {
+        let sinfo = unsafe { &mut SETTLEMENT };
+        return sinfo.0.len()
+    }
     pub fn flush_settlement() -> Vec<u8> {
         zkwasm_rust_sdk::dbg!("flush settlement\n");
         let sinfo = unsafe { &mut SETTLEMENT };

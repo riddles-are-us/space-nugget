@@ -70,7 +70,8 @@ impl GlobalState {
     pub fn preempt() -> bool {
         let counter = GLOBAL_STATE.0.borrow().counter;
         let txsize = GLOBAL_STATE.0.borrow().txsize;
-        if counter % 600 == 0 || txsize >= 300 {
+        let withdraw_size = SettlementInfo::settlement_size();
+        if counter % 600 == 0 || txsize >= 300 || withdraw_size > 40 {
             return true;
         } else {
             return false;
