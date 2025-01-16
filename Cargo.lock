@@ -57,7 +57,7 @@ dependencies = [
 [[package]]
 name = "derive_builder"
 version = "0.1.0"
-source = "git+https://github.com/DelphinusLab/zkWasm-rust.git#c0daa82f6ed0f8a554bf8800e62bee1ec8e1a90f"
+source = "git+https://github.com/DelphinusLab/zkWasm-rust.git#df1bd2d41612bde23351eb7dae7dd1bb0363da2e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -159,6 +159,7 @@ dependencies = [
  "sha2",
  "wasm-bindgen",
  "zkwasm-rest-abi",
+ "zkwasm-rest-convention",
  "zkwasm-rust-sdk",
 ]
 
@@ -334,7 +335,7 @@ checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
 [[package]]
 name = "zkwasm-rest-abi"
 version = "0.1.0"
-source = "git+https://github.com/DelphinusLab/zkwasm-typescript-mini-server#0b2eec12ad43c144275159f9a2021fa94ea46499"
+source = "git+https://github.com/DelphinusLab/zkwasm-mini-rollup?branch=release-v1#a60c7e83b92d67abdfd4be40f6f6a60173f8667a"
 dependencies = [
  "derive_builder",
  "lazy_static",
@@ -347,9 +348,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkwasm-rest-convention"
+version = "0.1.0"
+source = "git+https://github.com/DelphinusLab/zkwasm-mini-rollup?branch=release-v1#a60c7e83b92d67abdfd4be40f6f6a60173f8667a"
+dependencies = [
+ "derive_builder",
+ "lazy_static",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "wasm-bindgen",
+ "zkwasm-rest-abi",
+ "zkwasm-rust-sdk",
+]
+
+[[package]]
 name = "zkwasm-rust-sdk"
 version = "0.1.0"
-source = "git+https://github.com/DelphinusLab/zkWasm-rust.git#c0daa82f6ed0f8a554bf8800e62bee1ec8e1a90f"
+source = "git+https://github.com/DelphinusLab/zkWasm-rust.git#df1bd2d41612bde23351eb7dae7dd1bb0363da2e"
 dependencies = [
  "derive_builder",
  "primitive-types",

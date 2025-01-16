@@ -2,6 +2,7 @@ use crate::Player;
 use crate::StorageData;
 use core::slice::IterMut;
 use serde::Serialize;
+use crate::error::*;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
@@ -69,5 +70,36 @@ impl Owner for PuppyPlayer {
 
     fn get(pkey: &[u64; 4]) -> Option<Self> {
         Self::get_from_pid(&Self::pkey_to_pid(pkey))
+    }
+}
+
+impl PlayerData {
+    pub fn check_and_update_action_timestamp(&mut self, counter: u64, duration: u64) -> Result<(), u32> {
+        if self.last_action_timestamp != 0
+            && counter < self.last_action_timestamp + duration 
+            {
+                Err(PLAYER_ACTION_NOT_FINISHED)
+            } else {
+                self.last_action_timestamp = counter;
+                Ok(())
+            }
+    }
+    pub fn increase_progress(&mut self, counter:u64, progress: u32) {
+        self.progress += progress;
+        if self.progress >= 1000 {
+            self.progress = 1000;
+        }
+        if self.progress == 1000 {
+            self.last_lottery_timestamp = counter;
+        }
+        
+    }
+    pub fn cost_ticket(&mut self, amount: u32) -> Result<(), u32> {
+        if self.ticket < amount {
+            Err(PLAYER_NOT_ENOUGH_TICKET)
+        } else {
+            self.ticket -= amount;
+            Ok(())
+        }
     }
 }

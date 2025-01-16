@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
 use zkwasm_rest_abi::*;
 pub mod config;
+pub mod error;
+pub mod command;
 pub mod player;
 pub mod settlement;
 pub mod state;
