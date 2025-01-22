@@ -19,16 +19,23 @@ use crate::error::*;
 #[derive(Clone, Serialize, Default, Copy)]
 pub struct MemeInfo {
     pub rank: u64,
+    pub stake: u64,
+    pub owner: [u64; 2],
 }
 
 impl StorageData for MemeInfo {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         MemeInfo {
             rank: *u64data.next().unwrap(),
+            stake: *u64data.next().unwrap(),
+            owner: [*u64data.next().unwrap(),*u64data.next().unwrap()],
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
         data.push(self.rank);
+        data.push(self.stake);
+        data.push(self.owner[0]);
+        data.push(self.owner[1]);
     }
 }
 
@@ -65,7 +72,7 @@ const WITHDRAW_LOTTERY: u64 = 10;
 impl GlobalState {
     pub fn new() -> Self {
         GlobalState {
-            meme_list: [MemeInfo::default(); 36].to_vec(),
+            meme_list: [MemeInfo::default(); 12].to_vec(),
             counter: 0,
             txsize: 0,
             airdrop: 10000000
@@ -75,6 +82,14 @@ impl GlobalState {
     pub fn update_meme_rank(index: usize) {
         let mut state = GLOBAL_STATE.0.borrow_mut();
         state.meme_list[index].rank += 1;
+    }
+
+    pub fn update_meme_stake(index: usize, player: &PuppyPlayer) {
+        let mut state = GLOBAL_STATE.0.borrow_mut();
+        if state.meme_list[index].stake < player.data.stake[index] {
+            state.meme_list[index].stake = player.data.stake[index];
+            state.meme_list[index].owner = player.player_id.clone();
+        }
     }
 
     pub fn snapshot() -> String {

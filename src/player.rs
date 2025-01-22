@@ -13,6 +13,7 @@ pub struct PlayerData {
     pub last_action_timestamp: u64,  // last timestamp when this user allowed to pick a lottery
     pub lottery_info: u32,
     pub progress: u32,
+    pub stake: [u64; 12],
 }
 
 impl Default for PlayerData {
@@ -25,6 +26,7 @@ impl Default for PlayerData {
             ticket: 50,
             lottery_info: 0,
             progress: 0,
+            stake: [0; 12],
         }
     }
 }
@@ -45,6 +47,20 @@ impl StorageData for PlayerData {
             action: *u64data.next().unwrap(),
             last_lottery_timestamp: *u64data.next().unwrap(),
             last_action_timestamp: *u64data.next().unwrap(),
+            stake: [
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+                *u64data.next().unwrap(),
+            ]
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
@@ -53,6 +69,9 @@ impl StorageData for PlayerData {
         data.push(self.action);
         data.push(self.last_lottery_timestamp);
         data.push(self.last_action_timestamp);
+        for c in self.stake.iter() {
+            data.push(*c);
+        }
     }
 }
 

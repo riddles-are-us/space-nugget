@@ -116,7 +116,16 @@ impl CommandHandler for Activity {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
                 match self {
-                    Activity::Vote(sz) | Activity::Stake(sz) | Activity::Bet(sz) => {
+                    Activity::Stake(sz) => {
+                        let amount = sz;
+                        player.check_and_inc_nonce(nonce);
+                        player.data.cost_ticket(amount)?;
+                        player.data.stake[sz] += amount;
+                        GlobalState::update_meme_stake(*sz, player);
+                        player.store();
+                        Ok(())
+                    },
+                    Activity::Vote(sz) | Activity::Bet(sz) => {
                         let action_duration = get_action_duration();
                         player.data.check_and_update_action_timestamp(counter, action_duration)?;
                         let action_reward = get_action_reward();
