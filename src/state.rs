@@ -10,6 +10,7 @@ use zkwasm_rest_abi::MERKLE_MAP;
 use zkwasm_rust_sdk::require;
 use crate::command::Command;
 use crate::command::Activity;
+use crate::command::Deposit;
 use crate::command::Withdraw;
 use crate::command::WithdrawLottery;
 use crate::command::CommandHandler;
@@ -173,6 +174,10 @@ impl Transaction {
             Command::Withdraw (Withdraw {
                 data: [params[2], params[3], params[4]]
             })
+        } else if command == DEPOSIT {
+            Command::Deposit (Deposit {
+                data: [params[2], params[3], params[4]]
+            })
         } else if command == WITHDRAW_LOTTERY {
             Command::WithdrawLottery (WithdrawLottery {
                 data: [params[2], params[3], params[4]]
@@ -191,6 +196,7 @@ impl Transaction {
             let chars = params[1..].iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
             Command::Activity (Activity::Comment(chars))
         } else {
+            unsafe {zkwasm_rust_sdk::require(command == TICK)};
             Command::Tick
         };
         Transaction {
@@ -246,9 +252,6 @@ impl Transaction {
                 cmd.handle(&pid, self.nonce, rand)
                     .map_or_else(|e| e, |_| 0)
             },
-            _ => {
-                unreachable!();
-            }
         };
         match self.command {
             Command::Tick => (),

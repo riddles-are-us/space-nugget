@@ -78,7 +78,7 @@ impl CommandHandler for WithdrawLottery {
 
 #[derive (Clone)]
 pub struct Deposit {
-    data: [u64; 3],
+    pub data: [u64; 3],
 }
 
 impl CommandHandler for Deposit {
