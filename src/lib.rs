@@ -6,6 +6,7 @@ pub mod command;
 pub mod player;
 pub mod settlement;
 pub mod state;
+pub mod meme;
 
 use crate::config::Config;
 use crate::state::{GlobalState, Transaction};

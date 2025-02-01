@@ -3,6 +3,11 @@ use crate::StorageData;
 use core::slice::IterMut;
 use serde::Serialize;
 use crate::error::*;
+use crate::meme::IndexedObject;
+use crate::meme::Position;
+use crate::meme::MemeInfo;
+use crate::meme::StakeInfo;
+use crate::meme::Wrapped;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
@@ -13,7 +18,6 @@ pub struct PlayerData {
     pub last_action_timestamp: u64,  // last timestamp when this user allowed to pick a lottery
     pub lottery_info: u32,
     pub progress: u32,
-    pub stake: [u64; 12],
 }
 
 impl Default for PlayerData {
@@ -26,7 +30,6 @@ impl Default for PlayerData {
             ticket: 50,
             lottery_info: 0,
             progress: 0,
-            stake: [0; 12],
         }
     }
 }
@@ -47,20 +50,6 @@ impl StorageData for PlayerData {
             action: *u64data.next().unwrap(),
             last_lottery_timestamp: *u64data.next().unwrap(),
             last_action_timestamp: *u64data.next().unwrap(),
-            stake: [
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-                *u64data.next().unwrap(),
-            ]
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
@@ -69,9 +58,6 @@ impl StorageData for PlayerData {
         data.push(self.action);
         data.push(self.last_lottery_timestamp);
         data.push(self.last_action_timestamp);
-        for c in self.stake.iter() {
-            data.push(*c);
-        }
     }
 }
 
@@ -95,7 +81,7 @@ impl Owner for PuppyPlayer {
 impl PlayerData {
     pub fn check_and_update_action_timestamp(&mut self, counter: u64, duration: u64) -> Result<(), u32> {
         if self.last_action_timestamp != 0
-            && counter < self.last_action_timestamp + duration 
+            && counter < self.last_action_timestamp + duration
             {
                 Err(PLAYER_ACTION_NOT_FINISHED)
             } else {
@@ -111,7 +97,7 @@ impl PlayerData {
         if self.progress == 1000 {
             self.last_lottery_timestamp = counter;
         }
-        
+
     }
     pub fn cost_ticket(&mut self, amount: u32) -> Result<(), u32> {
         if self.ticket < amount {
@@ -119,6 +105,31 @@ impl PlayerData {
         } else {
             self.ticket -= amount;
             Ok(())
+        }
+    }
+}
+
+pub trait PositionHolder: Sized {
+    fn stake(&mut self, meme_index: u64, amount: u32) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32>;
+}
+
+
+
+impl PositionHolder for Player<PlayerData> {
+    fn stake(&mut self, meme_index: u64, amount: u32) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32> {
+        self.data.cost_ticket(amount)?;
+        let mut pos = StakeInfo::get_or_new_position(&self.player_id, meme_index, StakeInfo { stake: 0 });
+        let mut meme = MemeInfo::get_object(meme_index);
+        match meme {
+            Some (mut m) => {
+                pos.data.stake += amount as u64;
+                if m.data.stake < pos.data.stake {
+                    m.data.stake = pos.data.stake;
+                    m.data.owner = self.player_id.clone();
+                }
+                Ok((pos, m))
+            }
+            None => Err(INVALID_MEME_INDEX)
         }
     }
 }

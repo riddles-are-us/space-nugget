@@ -23,9 +23,12 @@ function delay(ms: number) {
 }
 
 async function main() {
+    let r = await player.rpc.query_config();
+    console.log(r);
     console.log("Start run CREATE_PLAYER...");
-    await player.runCommandAndCheckState(CREATE_PLAYER);
+    await player.runCommand(CREATE_PLAYER, 0n, []);
 
+    /*
     console.log("Start run SHAKE_FEET...");
     await player.runCommandAndCheckState(SHAKE_FEET);
     await delay(10000); // Wait for 10 seconds/2 ticks
@@ -53,6 +56,7 @@ async function main() {
 
     console.log("Start run WITHDRAW...");
     await player.runCommandAndCheckState(WITHDRAW);
+    */
 }
 
 main();

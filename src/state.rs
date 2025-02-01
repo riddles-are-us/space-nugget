@@ -1,8 +1,8 @@
 use crate::config::ADMIN_PUBKEY;
+use crate::meme::MemeInfo;
 use crate::player::{Owner, PuppyPlayer};
 use crate::settlement::SettlementInfo;
 use crate::Player;
-use core::slice::IterMut;
 use serde::Serialize;
 use std::cell::RefCell;
 use zkwasm_rest_abi::StorageData;
@@ -16,28 +16,7 @@ use crate::command::WithdrawLottery;
 use crate::command::CommandHandler;
 use crate::error::*;
 
-#[derive(Clone, Serialize, Default, Copy)]
-pub struct MemeInfo {
-    pub rank: u64,
-    pub stake: u64,
-    pub owner: [u64; 2],
-}
 
-impl StorageData for MemeInfo {
-    fn from_data(u64data: &mut IterMut<u64>) -> Self {
-        MemeInfo {
-            rank: *u64data.next().unwrap(),
-            stake: *u64data.next().unwrap(),
-            owner: [*u64data.next().unwrap(),*u64data.next().unwrap()],
-        }
-    }
-    fn to_data(&self, data: &mut Vec<u64>) {
-        data.push(self.rank);
-        data.push(self.stake);
-        data.push(self.owner[0]);
-        data.push(self.owner[1]);
-    }
-}
 
 #[derive(Serialize)]
 pub struct GlobalState {
@@ -84,12 +63,9 @@ impl GlobalState {
         state.meme_list[index].rank += 1;
     }
 
-    pub fn update_meme_stake(index: usize, player: &PuppyPlayer) {
+    pub fn update_meme(index: usize, meme: MemeInfo) {
         let mut state = GLOBAL_STATE.0.borrow_mut();
-        if state.meme_list[index].stake < player.data.stake[index] {
-            state.meme_list[index].stake = player.data.stake[index];
-            state.meme_list[index].owner = player.player_id.clone();
-        }
+        state.meme_list[index] = meme;
     }
 
     pub fn snapshot() -> String {
@@ -100,7 +76,7 @@ impl GlobalState {
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
-        let player = PuppyPlayer::get(&pid.try_into().unwrap()).unwrap();
+        let player = PuppyPlayer::get(&pid.try_into().unwrap());
         serde_json::to_string(&player).unwrap()
     }
 
@@ -204,7 +180,7 @@ impl Transaction {
         } else if command == VOTE {
             Command::Activity (Activity::Vote(params[1] as usize))
         } else if command == STAKE {
-            Command::Activity (Activity::Stake(params[1] as usize))
+            Command::Activity (Activity::Stake(params[1] as usize, params[2]))
         } else if command == BET {
             Command::Activity (Activity::Bet(params[1] as usize))
         } else if command == COMMENT {

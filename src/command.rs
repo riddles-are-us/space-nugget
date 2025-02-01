@@ -2,7 +2,7 @@ use crate::config::{get_action_duration, get_action_reward};
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
-use crate::player::PuppyPlayer;
+use crate::player::{PositionHolder, PuppyPlayer};
 use crate::state::GlobalState;
 use crate::error::*;
 
@@ -102,7 +102,7 @@ impl CommandHandler for Deposit {
 pub enum Activity {
     // activities
     Vote(usize),
-    Stake(usize),
+    Stake(usize, u64),
     Bet(usize),
     Comment(Vec<u8>),
     Lottery,
@@ -116,13 +116,13 @@ impl CommandHandler for Activity {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
                 match self {
-                    Activity::Stake(sz) => {
-                        let amount = sz;
+                    Activity::Stake(sz, amount) => {
                         player.check_and_inc_nonce(nonce);
-                        player.data.cost_ticket(amount)?;
-                        player.data.stake[sz] += amount;
-                        GlobalState::update_meme_stake(*sz, player);
+                        let (pos, meme) = player.stake(*sz as u64, *amount as u32)?;
+                        GlobalState::update_meme(*sz, meme.data);
                         player.store();
+                        meme.store();
+                        pos.store();
                         Ok(())
                     },
                     Activity::Vote(sz) | Activity::Bet(sz) => {

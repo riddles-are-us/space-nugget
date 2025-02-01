@@ -26,6 +26,8 @@ const WITHDRAW = 8n;
 const DEPOSIT = 9n;
 const rpc = new ZKWasmAppRpc("https://disco.0xrobot.cx:8085");
 let admin = new PlayerConvention(process.env.SERVER_ADMIN_KEY!, rpc, DEPOSIT, WITHDRAW);
+
+/*
 console.log("install admin ...\n");
 async function createPlayer(player: PlayerConvention) {
     try {
@@ -41,7 +43,9 @@ async function createPlayer(player: PlayerConvention) {
       console.log("create Player error");
     }
 }
+
 createPlayer(admin);
+*/
 
 let provider = new ethers.JsonRpcProvider(process.env.RPC_PROVIDER!);
 
@@ -113,7 +117,7 @@ async function processTopUpEvent(event: EventLog) {
 
 	  } else {
             // Proceed with the deposit
-            await admin.deposit(pid_1, pid_2, amountInEther);
+            await admin.deposit(pid_1, pid_2, 0n, amountInEther);
             console.log(`------------------Deposit successful! ${event.transactionHash}\n`);
 	  }
 
