@@ -48,16 +48,19 @@ impl StorageData for MemeInfo {
 #[derive(Clone, Serialize, Default, Copy, Debug)]
 pub struct StakeInfo {
     pub stake: u64,
+    pub timestamp: u64 // last time the user collects their rewards
 }
 
 impl StorageData for StakeInfo {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         StakeInfo {
             stake: *u64data.next().unwrap(),
+            timestamp: *u64data.next().unwrap(),
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
         data.push(self.stake);
+        data.push(self.timestamp);
     }
 }
 

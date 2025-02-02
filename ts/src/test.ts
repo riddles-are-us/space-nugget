@@ -6,7 +6,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 const INSTALL_PLAYER = 1n;
 const VOTE = 2n;
 const STAKE = 3n;
-const BET = 4n;
+const COLLECT = 4n;
 const COMMENT = 5n;
 const LOTTERY = 6n;
 const INSTALL_MEME = 7n;
@@ -27,6 +27,10 @@ function delay(ms: number) {
 }
 
 async function main() {
+
+    const pubkey = new LeHexBN(query(account).pkx).toU64Array();
+    console.log(pubkey);
+
     let r = await player.rpc.queryConfig();
     console.log(r);
     console.log("Start run CREATE_PLAYER...");
@@ -59,13 +63,14 @@ async function main() {
     nonce = await player.getNonce();
     await player.runCommand(VOTE, nonce, [1n]);
 
-
-    const pubkey = new LeHexBN(query(account).pkx).toU64Array();
-
     let data = await player.rpc.queryData(`position/${pubkey[1]}/${pubkey[2]}`)
+    console.log(data);
 
-    console.log(pubkey);
+    nonce = await player.getNonce();
+    await player.runCommand(COLLECT, nonce, [1n]);
 
+
+    data = await player.rpc.queryData(`position/${pubkey[1]}/${pubkey[2]}`)
     console.log(data);
 
     data = await player.rpc.queryData(`memes`);

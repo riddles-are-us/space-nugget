@@ -110,20 +110,21 @@ impl PlayerData {
 }
 
 pub trait PositionHolder: Sized {
-    fn stake(&mut self, meme_index: u64, amount: u32) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32>;
+    fn stake(&mut self, meme_index: u64, amount: u32, timestampe: u64) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32>;
+    fn collect(&mut self, meme_index: u64, timestamp: u64) -> Result<Wrapped<StakeInfo>, u32>;
 }
 
 
 
 impl PositionHolder for Player<PlayerData> {
-    fn stake(&mut self, meme_index: u64, amount: u32) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32> {
+    fn stake(&mut self, meme_index: u64, amount: u32, timestamp: u64) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32> {
         self.data.cost_ticket(amount)?;
-        let mut pos = StakeInfo::get_or_new_position(&self.player_id, meme_index, StakeInfo { stake: 0 });
+        let mut pos = StakeInfo::get_or_new_position(&self.player_id, meme_index, StakeInfo { stake: 0, timestamp});
         let mut meme = MemeInfo::get_object(meme_index);
         match meme {
             Some (mut m) => {
                 pos.data.stake += amount as u64;
-                zkwasm_rust_sdk::dbg!("pos is {:?}\n", {pos.data});
+                pos.data.timestamp = timestamp;
                 if m.data.stake < pos.data.stake {
                     m.data.stake = pos.data.stake;
                     m.data.owner = self.player_id.clone();
@@ -132,5 +133,14 @@ impl PositionHolder for Player<PlayerData> {
             }
             None => Err(INVALID_MEME_INDEX)
         }
+    }
+    fn collect(&mut self, meme_index: u64, timestamp: u64) -> Result<Wrapped<StakeInfo>, u32> {
+        let mut pos = StakeInfo::get_position(&self.player_id, meme_index).map_or(Err(NOTHING_TO_COLLECT), |x| Ok(x))?;
+        let meme = MemeInfo::get_object(meme_index).map_or(Err(INVALID_MEME_INDEX), |x| Ok(x))?;
+        let delta = timestamp - pos.data.timestamp;
+        let collectable = delta * pos.data.stake * meme.data.rank / 10000000;
+        pos.data.timestamp = timestamp;
+        self.data.balance += collectable as u32;
+        Ok(pos)
     }
 }

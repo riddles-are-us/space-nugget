@@ -38,7 +38,7 @@ const INSTALL_PLAYER: u64 = 1;
 
 const VOTE: u64 = 2;
 const STAKE: u64 = 3;
-const BET: u64 = 4;
+const COLLECT: u64 = 4;
 const COMMENT: u64 = 5;
 const LOTTERY: u64 = 6;
 const INSTALL_MEME: u64 = 7;
@@ -167,8 +167,8 @@ impl Transaction {
             Command::Activity (Activity::Vote(params[1] as usize))
         } else if command == STAKE {
             Command::Activity (Activity::Stake(params[1] as usize, params[2]))
-        } else if command == BET {
-            Command::Activity (Activity::Bet(params[1] as usize))
+        } else if command == COLLECT {
+            Command::Activity (Activity::Collect(params[1] as usize))
         } else if command == COMMENT {
             let chars = params[1..].iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
             Command::Activity (Activity::Comment(chars))
@@ -220,6 +220,7 @@ impl Transaction {
 
     pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> Vec<u64> {
         let pid = PuppyPlayer::pkey_to_pid(&pkey);
+        let counter = GLOBAL_STATE.0.borrow_mut().counter;
         let e = match &self.command {
             Command::Tick => {
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
@@ -230,15 +231,15 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
             Command::InstallMeme=> self.create_meme()
                 .map_or_else(|e| e, |_| 0),
-            Command::Withdraw(cmd) => cmd.handle(&pid, self.nonce, rand)
+            Command::Withdraw(cmd) => cmd.handle(&pid, self.nonce, rand, counter)
                 .map_or_else(|e| e, |_| 0),
-            Command::WithdrawLottery(cmd) => cmd.handle(&pid, self.nonce, rand)
+            Command::WithdrawLottery(cmd) => cmd.handle(&pid, self.nonce, rand, counter)
                 .map_or_else(|e| e, |_| 0),
-            Command::Activity(cmd) => cmd.handle(&pid, self.nonce, rand)
+            Command::Activity(cmd) => cmd.handle(&pid, self.nonce, rand, counter)
                 .map_or_else(|e| e, |_| 0),
             Command::Deposit(cmd) => {
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
-                cmd.handle(&pid, self.nonce, rand)
+                cmd.handle(&pid, self.nonce, rand, counter)
                     .map_or_else(|e| e, |_| 0)
             },
         };

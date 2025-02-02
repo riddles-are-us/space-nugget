@@ -23,7 +23,7 @@ pub enum Command {
 
 
 pub trait CommandHandler {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4]) -> Result<(), u32>;
+    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], _counter: u64) -> Result<(), u32>;
 }
 
 #[derive (Clone)]
@@ -32,7 +32,7 @@ pub struct Withdraw {
 }
 
 impl CommandHandler for Withdraw {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4], _counter: u64) -> Result<(), u32> {
         let mut player = PuppyPlayer::get_from_pid(pid);
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
@@ -58,7 +58,7 @@ pub struct WithdrawLottery {
 }
 
 impl CommandHandler for WithdrawLottery {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4], _counter: u64) -> Result<(), u32> {
         let mut player = PuppyPlayer::get_from_pid(pid);
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
@@ -84,7 +84,7 @@ pub struct Deposit {
 }
 
 impl CommandHandler for Deposit {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4], _counter: u64) -> Result<(), u32> {
         let mut admin = PuppyPlayer::get_from_pid(pid).unwrap();
         admin.check_and_inc_nonce(nonce);
         let mut player = PuppyPlayer::get_from_pid(&[self.data[0], self.data[1]]);
@@ -105,13 +105,13 @@ pub enum Activity {
     // activities
     Vote(usize),
     Stake(usize, u64),
-    Bet(usize),
+    Collect(usize),
     Comment(Vec<u8>),
     Lottery,
 }
 
 impl CommandHandler for Activity {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4]) -> Result<(), u32> {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], counter: u64) -> Result<(), u32> {
         let counter = GlobalState::get_counter();
         let mut player = PuppyPlayer::get_from_pid(pid);
         match player.as_mut() {
@@ -120,7 +120,7 @@ impl CommandHandler for Activity {
                 match self {
                     Activity::Stake(sz, amount) => {
                         player.check_and_inc_nonce(nonce);
-                        let (pos, meme) = player.stake(*sz as u64, *amount as u32)?;
+                        let (pos, meme) = player.stake(*sz as u64, *amount as u32, counter)?;
                         player.store();
                         meme.store();
                         pos.store();
@@ -128,7 +128,15 @@ impl CommandHandler for Activity {
                         MemeInfo::emit_event(meme.data.id, &meme.data);
                         Ok(())
                     },
-                    Activity::Vote(sz) | Activity::Bet(sz) => {
+                    Activity::Collect(sz) => {
+                        player.check_and_inc_nonce(nonce);
+                        let pos = player.collect(*sz as u64, counter)?;
+                        player.store();
+                        pos.store();
+                        StakeInfo::emit_event(&pid, *sz as u64, &pos.data);
+                        Ok(())
+                    },
+                    Activity::Vote(sz) => {
                         let action_duration = get_action_duration();
                         player.data.check_and_update_action_timestamp(counter, action_duration)?;
                         let action_reward = get_action_reward();

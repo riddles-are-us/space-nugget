@@ -7,5 +7,6 @@ pub const PLAYER_LOTTERY_EXPIRED: u32 = 6;
 pub const PLAYER_LOTTERY_PROGRESS_NOT_FULL: u32 = 7;
 pub const PLAYER_NOT_ENOUGH_TICKET: u32 = 8;
 pub const INVALID_MEME_INDEX: u32 = 9;
+pub const NOTHING_TO_COLLECT: u32 = 10;
 
 
