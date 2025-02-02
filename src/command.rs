@@ -1,4 +1,5 @@
 use crate::config::{get_action_duration, get_action_reward};
+use crate::meme::{IndexedObject, MemeInfo, StakeInfo, Position};
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
@@ -16,6 +17,7 @@ pub enum Command {
     Deposit(Deposit),
     // standard player install and timer
     InstallPlayer,
+    InstallMeme,
     Tick,
 }
 
@@ -44,7 +46,7 @@ impl CommandHandler for Withdraw {
                     WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
                 SettlementInfo::append_settlement(withdrawinfo);
                 player.store();
-                Ok(()) 
+                Ok(())
             }
         }
     }
@@ -119,10 +121,11 @@ impl CommandHandler for Activity {
                     Activity::Stake(sz, amount) => {
                         player.check_and_inc_nonce(nonce);
                         let (pos, meme) = player.stake(*sz as u64, *amount as u32)?;
-                        GlobalState::update_meme(*sz, meme.data);
                         player.store();
                         meme.store();
                         pos.store();
+                        StakeInfo::emit_event(&pid, *sz as u64, &pos.data);
+                        MemeInfo::emit_event(meme.data.id, &meme.data);
                         Ok(())
                     },
                     Activity::Vote(sz) | Activity::Bet(sz) => {
@@ -132,9 +135,16 @@ impl CommandHandler for Activity {
                         player.data.cost_ticket(1)?;
                         player.data.increase_progress(counter,action_reward);
                         player.check_and_inc_nonce(nonce);
-                        GlobalState::update_meme_rank(*sz);
-                        player.store();
-                        Ok(())
+                        let meme = MemeInfo::get_object(*sz as u64);
+                        match meme {
+                            None => Err(INVALID_MEME_INDEX),
+                            Some (mut m) => {
+                                m.data.rank += 1;
+                                m.store();
+                                player.store();
+                                Ok(())
+                            }
+                        }
                     },
                     Activity::Lottery => {
                         // This is the selected player; allow them to open the blind box
@@ -176,6 +186,7 @@ pub fn decode_error(e: u32) -> &'static str {
         PLAYER_LOTTERY_EXPIRED => "PlayerLotteryExpired",
         PLAYER_LOTTERY_PROGRESS_NOT_FULL => "PlayerLotteryProgressNotFull",
         PLAYER_NOT_ENOUGH_TICKET => "PlayerNotEnoughTicket",
+        INVALID_MEME_INDEX => "SpecifiedMemeIndexNotFound",
         _ => "Unknown",
     }
 }

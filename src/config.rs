@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 
 impl Config {
     pub fn to_json_string() -> String {
-        let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
+        let meme_list: Vec<u64> = vec![];
         serde_json::to_string(&meme_list).unwrap()
     }
 

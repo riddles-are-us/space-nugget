@@ -1,16 +1,20 @@
 import { Player } from "./api.js";
 //import { LeHexBN, ZKWasmAppRpc} from "zkwasm-minirollup-rpc";
-import { LeHexBN, ZKWasmAppRpc} from "zkwasm-ts-server";
+import { LeHexBN, query, ZKWasmAppRpc} from "zkwasm-ts-server";
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
-const CREATE_PLAYER = 1n;
-const SHAKE_FEET = 2n;
-const JUMP = 3n;
-const SHAKE_HEADS = 4n;
-const POST_COMMENTS = 5n;
+const INSTALL_PLAYER = 1n;
+const VOTE = 2n;
+const STAKE = 3n;
+const BET = 4n;
+const COMMENT = 5n;
 const LOTTERY = 6n;
+const INSTALL_MEME = 7n;
 const WITHDRAW = 8n;
 const DEPOSIT = 9n;
+const WITHDRAW_LOTTERY = 10n;
+
+
 
 let account = "1234";
 
@@ -23,10 +27,54 @@ function delay(ms: number) {
 }
 
 async function main() {
-    let r = await player.rpc.query_config();
+    let r = await player.rpc.queryConfig();
     console.log(r);
     console.log("Start run CREATE_PLAYER...");
-    await player.runCommand(CREATE_PLAYER, 0n, []);
+    await player.runCommand(INSTALL_PLAYER, 0n, []);
+
+    let nonce = await player.getNonce();
+    await player.runCommand(VOTE, nonce, [0n]);
+
+    nonce = await player.getNonce();
+    await player.runCommand(VOTE, nonce, [1n]);
+
+
+    nonce = await player.getNonce();
+    await player.runCommand(INSTALL_MEME, nonce, []);
+
+
+    nonce = await player.getNonce();
+    await player.runCommand(INSTALL_MEME, nonce, []);
+
+
+    nonce = await player.getNonce();
+    await player.runCommand(INSTALL_MEME, nonce, []);
+
+    nonce = await player.getNonce();
+    await player.runCommand(STAKE, nonce, [1n, 1n]);
+
+    nonce = await player.getNonce();
+    await player.runCommand(STAKE, nonce, [0n, 2n]);
+
+    nonce = await player.getNonce();
+    await player.runCommand(VOTE, nonce, [1n]);
+
+
+    const pubkey = new LeHexBN(query(account).pkx).toU64Array();
+
+    let data = await player.rpc.queryData(`position/${pubkey[1]}/${pubkey[2]}`)
+
+    console.log(pubkey);
+
+    console.log(data);
+
+    data = await player.rpc.queryData(`memes`);
+
+    console.log(data);
+
+
+
+
 
     /*
     console.log("Start run SHAKE_FEET...");

@@ -123,6 +123,7 @@ impl PositionHolder for Player<PlayerData> {
         match meme {
             Some (mut m) => {
                 pos.data.stake += amount as u64;
+                zkwasm_rust_sdk::dbg!("pos is {:?}\n", {pos.data});
                 if m.data.stake < pos.data.stake {
                     m.data.stake = pos.data.stake;
                     m.data.owner = self.player_id.clone();

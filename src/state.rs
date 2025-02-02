@@ -1,5 +1,5 @@
 use crate::config::ADMIN_PUBKEY;
-use crate::meme::MemeInfo;
+use crate::meme::{clear_events, IndexedObject, MemeInfo};
 use crate::player::{Owner, PuppyPlayer};
 use crate::settlement::SettlementInfo;
 use crate::Player;
@@ -20,7 +20,7 @@ use crate::error::*;
 
 #[derive(Serialize)]
 pub struct GlobalState {
-    pub meme_list: Vec<MemeInfo>,
+    pub total: u64,
     pub counter: u64,
     pub txsize: u64,
     pub airdrop: u64,
@@ -28,8 +28,8 @@ pub struct GlobalState {
 
 #[derive(Serialize)]
 pub struct QueryState {
+    total: u64,
     counter: u64,
-    meme_list: Vec<MemeInfo>,
     airdrop: u64,
 }
 
@@ -41,7 +41,7 @@ const STAKE: u64 = 3;
 const BET: u64 = 4;
 const COMMENT: u64 = 5;
 const LOTTERY: u64 = 6;
-
+const INSTALL_MEME: u64 = 7;
 const WITHDRAW: u64 = 8;
 const DEPOSIT: u64 = 9;
 const WITHDRAW_LOTTERY: u64 = 10;
@@ -51,28 +51,18 @@ const WITHDRAW_LOTTERY: u64 = 10;
 impl GlobalState {
     pub fn new() -> Self {
         GlobalState {
-            meme_list: [MemeInfo::default(); 12].to_vec(),
+            total: 0,
             counter: 0,
             txsize: 0,
             airdrop: 10000000
         }
     }
 
-    pub fn update_meme_rank(index: usize) {
-        let mut state = GLOBAL_STATE.0.borrow_mut();
-        state.meme_list[index].rank += 1;
-    }
-
-    pub fn update_meme(index: usize, meme: MemeInfo) {
-        let mut state = GLOBAL_STATE.0.borrow_mut();
-        state.meme_list[index] = meme;
-    }
-
     pub fn snapshot() -> String {
-        let meme_list = GLOBAL_STATE.0.borrow().meme_list.clone();
+        let total = GLOBAL_STATE.0.borrow().total;
         let counter = GLOBAL_STATE.0.borrow().counter;
         let airdrop = GLOBAL_STATE.0.borrow().airdrop;
-        serde_json::to_string(&QueryState { counter, meme_list, airdrop }).unwrap()
+        serde_json::to_string(&QueryState { counter, total, airdrop }).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
@@ -100,13 +90,10 @@ impl GlobalState {
     }
 
     pub fn store_into_kvpair(&self) {
-        let n = self.meme_list.len();
-        let mut v = Vec::with_capacity(n * 2 + 1);
+        let mut v = vec![];
         v.push(self.counter);
         v.push(self.airdrop);
-        for e in self.meme_list.iter() {
-            e.to_data(&mut v);
-        }
+        v.push(self.total);
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
     }
@@ -118,13 +105,10 @@ impl GlobalState {
             let mut u64data = data.iter_mut();
             let counter = *u64data.next().unwrap();
             let airdrop = *u64data.next().unwrap();
-            let mut meme_list = vec![];
-            while u64data.len() != 0 {
-                meme_list.push(MemeInfo::from_data(&mut u64data))
-            }
+            let total = *u64data.next().unwrap();
             self.counter = counter;
             self.airdrop = airdrop;
-            self.meme_list = meme_list;
+            self.total = total;
         }
     }
 
@@ -175,6 +159,8 @@ impl Transaction {
             })
         } else if command == INSTALL_PLAYER {
             Command::InstallPlayer
+        } else if command == INSTALL_MEME {
+            Command::InstallMeme
         } else  if command == LOTTERY {
             Command::Activity (Activity::Lottery)
         } else if command == VOTE {
@@ -214,6 +200,16 @@ impl Transaction {
         }
     }
 
+    pub fn create_meme(&self) -> Result<(), u32> {
+        let mut global = GLOBAL_STATE.0.borrow_mut();
+        let meme = MemeInfo::new_object(MemeInfo::default(), global.total);
+        meme.store();
+        MemeInfo::emit_event(global.total, &meme.data);
+        global.total += 1;
+        Ok(())
+    }
+
+
     pub fn tick(&self) {
         GLOBAL_STATE.0.borrow_mut().counter += 1;
     }
@@ -231,6 +227,8 @@ impl Transaction {
                 0
             },
             Command::InstallPlayer => self.create_player(pkey)
+                .map_or_else(|e| e, |_| 0),
+            Command::InstallMeme=> self.create_meme()
                 .map_or_else(|e| e, |_| 0),
             Command::Withdraw(cmd) => cmd.handle(&pid, self.nonce, rand)
                 .map_or_else(|e| e, |_| 0),
@@ -251,6 +249,9 @@ impl Transaction {
                 self.tick();
             }
         }
-        vec![e as u64]
+        let txsize = GLOBAL_STATE.0.borrow_mut().txsize;
+        unsafe {
+            clear_events(vec![e as u64, txsize])
+        }
     }
 }
