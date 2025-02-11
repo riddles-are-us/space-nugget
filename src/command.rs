@@ -170,6 +170,7 @@ impl CommandHandler for Activity {
                             } else {
                                 player.data.balance += 10; // change 10 to random reward
                             }
+                            player.store();
                             Ok(())
                         } else {
                             Err(PLAYER_LOTTERY_PROGRESS_NOT_FULL)
