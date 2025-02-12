@@ -1,13 +1,13 @@
+use crate::meme::MemeInfo;
+use crate::meme::StakeInfo;
 use crate::Player;
 use crate::StorageData;
 use core::slice::IterMut;
 use serde::Serialize;
+use zkwasm_rest_convention::IndexedObject;
+use zkwasm_rest_convention::Position;
+use zkwasm_rest_convention::Wrapped;
 use crate::error::*;
-use crate::meme::IndexedObject;
-use crate::meme::Position;
-use crate::meme::MemeInfo;
-use crate::meme::StakeInfo;
-use crate::meme::Wrapped;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
@@ -120,7 +120,7 @@ impl PositionHolder for Player<PlayerData> {
     fn stake(&mut self, meme_index: u64, amount: u32, timestamp: u64) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32> {
         self.data.cost_ticket(amount)?;
         let mut pos = StakeInfo::get_or_new_position(&self.player_id, meme_index, StakeInfo { stake: 0, timestamp});
-        let mut meme = MemeInfo::get_object(meme_index);
+        let meme = MemeInfo::get_object(meme_index);
         match meme {
             Some (mut m) => {
                 pos.data.stake += amount as u64;

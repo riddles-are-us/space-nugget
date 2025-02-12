@@ -1,5 +1,5 @@
 use crate::config::ADMIN_PUBKEY;
-use crate::meme::{clear_events, IndexedObject, MemeInfo};
+use crate::meme::MemeInfo;
 use crate::player::{Owner, PuppyPlayer};
 use crate::settlement::SettlementInfo;
 use crate::Player;
@@ -15,7 +15,7 @@ use crate::command::Withdraw;
 use crate::command::WithdrawLottery;
 use crate::command::CommandHandler;
 use crate::error::*;
-
+use zkwasm_rest_convention::{clear_events, IndexedObject};
 
 
 #[derive(Serialize)]

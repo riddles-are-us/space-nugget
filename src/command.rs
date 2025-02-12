@@ -1,5 +1,6 @@
 use crate::config::{get_action_duration, get_action_reward};
-use crate::meme::{IndexedObject, MemeInfo, StakeInfo, Position};
+use crate::meme::{MemeInfo, StakeInfo};
+use zkwasm_rest_convention::{IndexedObject, Position};
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
