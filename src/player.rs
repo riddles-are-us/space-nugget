@@ -1,5 +1,4 @@
-use crate::meme::MemeInfo;
-use crate::meme::StakeInfo;
+use crate::nugget::NuggetInfo;
 use crate::Player;
 use crate::StorageData;
 use core::slice::IterMut;
@@ -11,64 +10,49 @@ use crate::error::*;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
-    pub balance: u32,
-    pub ticket: u32,
-    pub action: u64,
-    pub last_lottery_timestamp: u64, // last timestamp when this user allowed to pick a lottery
-    pub last_action_timestamp: u64,  // last timestamp when this user allowed to pick a lottery
-    pub lottery_info: u32,
-    pub progress: u32,
+    pub balance: u64,
+    pub inventory: Vec<u64>,
 }
 
 impl Default for PlayerData {
     fn default() -> Self {
         Self {
-            action: 0,
-            last_lottery_timestamp: 0,
-            last_action_timestamp: 0, // last timestamp when this user allowed to pick a lottery
             balance: 0,
-            ticket: 50,
-            lottery_info: 0,
-            progress: 0,
+            inventory: vec![],
         }
     }
 }
 
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
-        let bt = *u64data.next().unwrap();
-        let balance = (bt >> 32) as u32;
-        let ticket = (bt & 0xffffffff) as u32;
-        let lot = *u64data.next().unwrap();
-        let progress = (lot >> 32) as u32;
-        let lottery_info = (lot & 0xffffffff) as u32;
+        let balance = *u64data.next().unwrap();
+        let length = *u64data.next().unwrap();
+        let mut inventory = Vec::with_capacity(length as usize);
+        for _ in 0..length {
+            inventory.push(*u64data.next().unwrap());
+        }
         PlayerData {
-            progress,
-            lottery_info,
             balance,
-            ticket,
-            action: *u64data.next().unwrap(),
-            last_lottery_timestamp: *u64data.next().unwrap(),
-            last_action_timestamp: *u64data.next().unwrap(),
+            inventory,
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
-        data.push(((self.balance as u64) << 32) + (self.ticket as u64));
-        data.push(((self.progress as u64) << 32) + (self.lottery_info as u64));
-        data.push(self.action);
-        data.push(self.last_lottery_timestamp);
-        data.push(self.last_action_timestamp);
+        data.push(self.balance);
+        data.push(self.inventory.len() as u64);
+        for i in 0..self.inventory.len() {
+            data.push(self.inventory[i])
+        }
     }
 }
 
-pub type PuppyPlayer = Player<PlayerData>;
+pub type GamePlayer = Player<PlayerData>;
 
 pub trait Owner: Sized {
     fn new(pkey: &[u64; 4]) -> Self;
     fn get(pkey: &[u64; 4]) -> Option<Self>;
 }
 
-impl Owner for PuppyPlayer {
+impl Owner for GamePlayer {
     fn new(pkey: &[u64; 4]) -> Self {
         Self::new_from_pid(Self::pkey_to_pid(pkey))
     }
@@ -79,68 +63,50 @@ impl Owner for PuppyPlayer {
 }
 
 impl PlayerData {
-    pub fn check_and_update_action_timestamp(&mut self, counter: u64, duration: u64) -> Result<(), u32> {
-        if self.last_action_timestamp != 0
-            && counter < self.last_action_timestamp + duration
-            {
-                Err(PLAYER_ACTION_NOT_FINISHED)
-            } else {
-                self.last_action_timestamp = counter;
-                Ok(())
-            }
-    }
-    pub fn increase_progress(&mut self, counter:u64, progress: u32) {
-        self.progress += progress;
-        if self.progress >= 1000 {
-            self.progress = 1000;
-        }
-        if self.progress == 1000 {
-            self.last_lottery_timestamp = counter;
-        }
-
-    }
-    pub fn cost_ticket(&mut self, amount: u32) -> Result<(), u32> {
-        if self.ticket < amount {
-            Err(PLAYER_NOT_ENOUGH_TICKET)
+    pub fn cost_balance(&mut self, amount: u64) -> Result<(), u32> {
+        if self.balance < amount {
+            Err(PLAYER_NOT_ENOUGH_BALANCE)
         } else {
-            self.ticket -= amount;
+            self.balance -= amount;
             Ok(())
         }
     }
 }
 
 pub trait PositionHolder: Sized {
-    fn stake(&mut self, meme_index: u64, amount: u32, timestampe: u64) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32>;
-    fn collect(&mut self, meme_index: u64, timestamp: u64) -> Result<Wrapped<StakeInfo>, u32>;
+    fn create(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
+    fn bid(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
+    fn sell(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
+    fn collect(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32>;
+    fn analyze(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32>;
+
 }
 
 
 
 impl PositionHolder for Player<PlayerData> {
-    fn stake(&mut self, meme_index: u64, amount: u32, timestamp: u64) -> Result<(Wrapped<StakeInfo>, Wrapped<MemeInfo>), u32> {
-        self.data.cost_ticket(amount)?;
-        let mut pos = StakeInfo::get_or_new_position(&self.player_id, meme_index, StakeInfo { stake: 0, timestamp});
-        let meme = MemeInfo::get_object(meme_index);
-        match meme {
-            Some (mut m) => {
-                pos.data.stake += amount as u64;
-                pos.data.timestamp = timestamp;
-                if m.data.stake < pos.data.stake {
-                    m.data.stake = pos.data.stake;
-                    m.data.owner = self.player_id.clone();
-                }
-                Ok((pos, m))
+    fn create(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
+        todo!();
+    }
+    fn bid(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
+        self.data.cost_balance(price)?;
+        let mut nugget = NuggetInfo::get_object(nugget_index);
+        match nugget {
+            Some (mut n) => {
+                Ok(n)
             }
-            None => Err(INVALID_MEME_INDEX)
+            None => Err(INVALID_NUGGET_INDEX)
         }
     }
-    fn collect(&mut self, meme_index: u64, timestamp: u64) -> Result<Wrapped<StakeInfo>, u32> {
-        let mut pos = StakeInfo::get_position(&self.player_id, meme_index).map_or(Err(NOTHING_TO_COLLECT), |x| Ok(x))?;
-        let meme = MemeInfo::get_object(meme_index).map_or(Err(INVALID_MEME_INDEX), |x| Ok(x))?;
-        let delta = timestamp - pos.data.timestamp;
-        let collectable = delta * pos.data.stake * meme.data.rank / 10000000;
-        pos.data.timestamp = timestamp;
-        self.data.balance += collectable as u32;
-        Ok(pos)
+    fn sell(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
+        todo!();
     }
+    fn collect(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32> {
+        todo!();
+    }
+    fn analyze(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32> {
+        todo!();
+    }
+
+
 }
