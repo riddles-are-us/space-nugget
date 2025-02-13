@@ -1,10 +1,10 @@
-use crate::nugget::NuggetInfo;
+use crate::nugget::{BidInfo, NuggetInfo};
 use zkwasm_rest_convention::{IndexedObject, Position};
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
-use crate::player::{PositionHolder, GamePlayer};
-use crate::state::GlobalState;
+use crate::player::GamePlayer;
+use crate::state::{GlobalState, GLOBAL_STATE};
 use crate::error::*;
 
 #[derive (Clone)]
@@ -76,6 +76,8 @@ impl CommandHandler for Deposit {
 pub enum Activity {
     // activities
     Create,
+    Bid(u64, u64),
+    Sell(u64),
 }
 
 impl CommandHandler for Activity {
@@ -87,8 +89,85 @@ impl CommandHandler for Activity {
             Some(player) => {
                 match self {
                     Activity::Create => {
-                        todo!();
+                        if player.data.inventory.len() > player.data.inventory_size as usize {
+                            Err(PLAYER_NOT_ENOUGH_INVENTORY)
+                        } else {
+                            let mut global = GLOBAL_STATE.0.borrow_mut();
+                            let mut nugget = NuggetInfo::new_object(NuggetInfo::new(global.total, rand[1]), global.total);
+                            nugget.data.compute_sysprice();
+                            nugget.store();
+                            NuggetInfo::emit_event(global.total, &nugget.data);
+                            global.total += 1;
+                            player.data.inventory.push(nugget.data.id);
+                            player.store();
+                            Ok(())
+                        }
+                    },
+                    Activity::Sell(index) => {
+                        if player.data.inventory.len() >= (*index) as usize {
+                            Err(INVALID_NUGGET_INDEX)
+                        } else {
+                            let nuggetid = player.data.inventory[*index as usize];
+                            let mut nugget = NuggetInfo::get_object(nuggetid).unwrap();
+                            match nugget.data.bid {
+                                None => {
+                                    // sell at system price
+                                    player.data.inc_balance(nugget.data.sysprice);
+                                    nugget.data.cycle = 1;
+                                    player.data.inventory.swap_remove(*index as usize);
+                                    nugget.store();
+                                    player.store();
+                                },
+                                Some (bidder) => {
+                                    player.data.inc_balance(bidder.bidprice);
+                                    let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
+                                    last_player.data.inventory.push(nugget.data.id);
+                                    player.data.inventory.swap_remove(*index as usize);
+                                    nugget.store();
+                                    player.store();
+                                    last_player.store();
+                                }
+                            }
+                            NuggetInfo::emit_event(nugget.data.id, &nugget.data);
+                            Ok(())
+                        }
+                    },
+
+                    Activity::Bid(nid, price) => {
+                        player.data.cost_balance(*price)?;
+                        let nugget = NuggetInfo::get_object(*nid);
+                        match nugget {
+                            Some(mut n) => {
+                                match n.data.bid {
+                                    Some(bidder) => {
+                                        if bidder.bidprice >= *price {
+                                            Err(ERROR_BID_PRICE_INSUFFICIENT)
+                                        } else {
+                                            let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
+                                            last_player.data.inc_balance(bidder.bidprice);
+                                            n.data.bid = Some(BidInfo {
+                                                bidprice: *price,
+                                                bidder: pid.clone(),
+                                            });
+                                            last_player.store();
+                                            n.store();
+                                            Ok(())
+                                        }
+                                    },
+                                    None => {
+                                        n.data.bid = Some(BidInfo {
+                                            bidprice: *price,
+                                            bidder: pid.clone(),
+                                        });
+                                        n.store();
+                                        Ok(())
+                                    }
+                                }
+                            },
+                            None => Err(INVALID_NUGGET_INDEX)
+                        }
                     }
+
                 }
             }
         }
@@ -103,6 +182,8 @@ pub fn decode_error(e: u32) -> &'static str {
         SELECTED_PLAYER_NOT_EXIST => "SelectedPlayerNotExist",
         PLAYER_NOT_ENOUGH_BALANCE=> "PlayerNotEnoughBalance",
         INVALID_NUGGET_INDEX => "SpecifiedMemeIndexNotFound",
+        PLAYER_NOT_ENOUGH_INVENTORY=> "PlayerInventoryFull",
+        ERROR_BID_PRICE_INSUFFICIENT => "BidPriceInsufficient",
         _ => "Unknown",
     }
 }

@@ -48,13 +48,22 @@ export class IndexedObject {
     }
 }
 
-export function parseMemeInfo(iobj: IndexedObject) {
+export function parseNuggetInfo(iobj: IndexedObject) {
   console.log(iobj);
+  let bid = null;
+  if (iobj.data[5] != 0n) {
+    bid = {
+      bidprice: iobj.data[5],
+      bider: [iobj.data[6], iobj.data[7]],
+    }
+  }
   return  {
     id: Number(iobj.index),
-    rank: Number(iobj.data[1]),
-    stake: Number(iobj.data[2]),
-    pid: [Number(iobj.data[3]), Number(iobj.data[4])]
+    attributes: Number(iobj.data[1]),
+    cycle: Number(iobj.data[2]),
+    sysprice: Number(iobj.data[3]),
+    askprice: Number(iobj.data[4]),
+    bid: bid,
   }
 }
 

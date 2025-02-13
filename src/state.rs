@@ -34,6 +34,9 @@ pub struct QueryState {
 
 const TICK: u64 = 0;
 const INSTALL_PLAYER: u64 = 1;
+const EXPLORE_NUGGET: u64 = 4;
+const SELL_NUGGET: u64 = 5;
+const BID_NUGGET: u64 = 6;
 const CREATE_NUGGET: u64 = 7;
 const WITHDRAW: u64 = 8;
 const DEPOSIT: u64 = 9;
@@ -66,7 +69,7 @@ impl GlobalState {
         let counter = GLOBAL_STATE.0.borrow().counter;
         let txsize = GLOBAL_STATE.0.borrow().txsize;
         let withdraw_size = SettlementInfo::settlement_size();
-        if counter % 600 == 0 || txsize >= 300 || withdraw_size > 40 {
+        if counter % 600 == 0 || txsize >= 100 || withdraw_size > 40 {
             return true;
         } else {
             return false;
@@ -147,6 +150,12 @@ impl Transaction {
             })
         } else if command == INSTALL_PLAYER {
             Command::InstallPlayer
+        } else if command == EXPLORE_NUGGET {
+            Command::Activity (Activity::Sell(params[1]))
+        } else if command == SELL_NUGGET {
+            Command::Activity (Activity::Sell(params[1]))
+        } else if command == BID_NUGGET {
+            Command::Activity (Activity::Bid(params[1], params[2]))
         } else if command == CREATE_NUGGET {
             Command::Activity (Activity::Create)
         } else {
@@ -176,20 +185,6 @@ impl Transaction {
             }
         }
     }
-
-    pub fn create_nugget(&self) -> Result<(), u32> {
-        let mut global = GLOBAL_STATE.0.borrow_mut();
-        /*
-        let nugget = NuggetInfo::new(NuggetInfo::default(), global.total);
-        nugget.store();
-        let nugget_index = global.total;
-        NuggetInfo::emit_event(global.total, nugget_index+1, &nugget.data);
-        global.total += 1;
-        */
-        todo!();
-        //Ok(())
-    }
-
 
     pub fn tick(&self) {
         GLOBAL_STATE.0.borrow_mut().counter += 1;

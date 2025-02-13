@@ -11,6 +11,7 @@ use crate::error::*;
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
     pub balance: u64,
+    pub inventory_size: u64,
     pub inventory: Vec<u64>,
 }
 
@@ -18,6 +19,7 @@ impl Default for PlayerData {
     fn default() -> Self {
         Self {
             balance: 0,
+            inventory_size: 4,
             inventory: vec![],
         }
     }
@@ -26,6 +28,7 @@ impl Default for PlayerData {
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         let balance = *u64data.next().unwrap();
+        let inventory_size = *u64data.next().unwrap();
         let length = *u64data.next().unwrap();
         let mut inventory = Vec::with_capacity(length as usize);
         for _ in 0..length {
@@ -33,11 +36,13 @@ impl StorageData for PlayerData {
         }
         PlayerData {
             balance,
+            inventory_size,
             inventory,
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
         data.push(self.balance);
+        data.push(self.inventory_size);
         data.push(self.inventory.len() as u64);
         for i in 0..self.inventory.len() {
             data.push(self.inventory[i])
@@ -71,42 +76,7 @@ impl PlayerData {
             Ok(())
         }
     }
-}
-
-pub trait PositionHolder: Sized {
-    fn create(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
-    fn bid(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
-    fn sell(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32>;
-    fn collect(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32>;
-    fn analyze(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32>;
-
-}
-
-
-
-impl PositionHolder for Player<PlayerData> {
-    fn create(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
-        todo!();
+    pub fn inc_balance(&mut self, amount: u64) {
+        self.balance += amount;
     }
-    fn bid(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
-        self.data.cost_balance(price)?;
-        let mut nugget = NuggetInfo::get_object(nugget_index);
-        match nugget {
-            Some (mut n) => {
-                Ok(n)
-            }
-            None => Err(INVALID_NUGGET_INDEX)
-        }
-    }
-    fn sell(&mut self, nugget_index: u64, price: u64) -> Result<Wrapped<NuggetInfo>, u32> {
-        todo!();
-    }
-    fn collect(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32> {
-        todo!();
-    }
-    fn analyze(&mut self, nugget_index: u64) -> Result<Wrapped<NuggetInfo>, u32> {
-        todo!();
-    }
-
-
 }

@@ -1,7 +1,7 @@
 import { Service } from "zkwasm-ts-server";
 import {TxWitness} from "zkwasm-ts-server/src/prover";
 import {Event, EventModel} from "./event.js";
-import { Position, IndexedObjectModel, IndexedObject, PositionModel, parseMemeInfo} from "./info.js";
+import { Position, IndexedObjectModel, IndexedObject, PositionModel, parseNuggetInfo} from "./info.js";
 import { Player} from "./api.js";
 import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
 import { Express } from "express";
@@ -18,33 +18,41 @@ await service.initialize();
 let currentUncommitMerkleRoot: string = merkleRootToBeHexString(service.merkleRoot);
 
 function extra (app: Express) {
-	app.get('/data/position/:pid1/:pid2', async(req:any, res) => {
-		let pid1:bigint = BigInt(req.params.pid1);
-		let pid2:bigint = BigInt(req.params.pid2);
-		console.log("query position:", pid1, pid2);
-		let doc = await PositionModel.find(
-				{pid_1: pid1, pid_2: pid2},
-		);
-		let data = doc.map((d) => {return Position.fromMongooseDoc(d).toJSON()})
-		console.log("query position:", doc);
-		
-		
+  app.get('/data/nugget/:nid', async(req:any, res) => {
+    try {
+      let nid = req.params.nid;
+      const doc = await IndexedObjectModel.find(
+        //{index: Number(nid)},
+        {index: nid},
+      );
+      let data = doc.map((d) => {
+        return parseNuggetInfo(IndexedObject.fromMongooseDoc(d))
+      })
+      res.status(201).send({
+        success: true,
+        data: data,
+      });
+    } catch (e) {
+      console.log(e);
+      res.status(500).send()
+    }
+  });
 
-		res.status(200).send({
-			success: true,
-			data: data,
-		});
-	});
-	app.get('/data/memes', async(req:any, res) => {
+	app.get('/data/nuggets', async(req:any, res) => {
 		const doc = await IndexedObjectModel.find();
-		const jdoc = doc.map((d) => {
-			const jdoc = IndexedObject.fromMongooseDoc(d);
-			return parseMemeInfo(jdoc);
-		});
-		res.status(200).send({
-			success: true,
-			data: jdoc,
-		});
+    try {
+      const jdoc = doc.map((d) => {
+        const jdoc = IndexedObject.fromMongooseDoc(d);
+        return parseNuggetInfo(jdoc);
+      });
+      res.status(201).send({
+        success: true,
+        data: jdoc,
+      });
+    } catch (e) {
+      console.log(e);
+      res.status(500).send()
+    }
 	});
 }
 
@@ -52,7 +60,7 @@ function extra (app: Express) {
 service.serve();
 
 const EVENT_POSITION_UPDATE = 1;
-const EVENT_MEME_UPDATE = 2;
+const EVENT_NUGGET_UPDATE = 2;
 
 let preemptcounter = 0;
 
@@ -123,15 +131,15 @@ async function eventCallback(arg: TxWitness, data: BigUint64Array) {
 							position.toObject(),
 							{upsert: true}
 					);
-					console.log("save position", position.pid_1, position.pid_2, position.object_index);
+					console.log("save position", position.pid_1, position.pid_2, position.object_index, doc);
 				}
 				break;
-			case EVENT_MEME_UPDATE:
+			case EVENT_NUGGET_UPDATE:
 				{
-					console.log("token event");
+					console.log("indexed object event:");
 					let obj = IndexedObject.fromEvent(eventData);
 					let doc = await IndexedObjectModel.findOneAndUpdate({index: obj.index}, obj.toObject(), {upsert: true});
-					console.log("save token", doc);
+					console.log("indexed object", doc);
 				}
 				break;
 			default:
