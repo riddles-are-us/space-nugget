@@ -17,7 +17,8 @@ export class Player extends PlayerConvention {
   async runCommand(command: bigint, nonce: bigint, params: bigint[]) {
     try {
       let result = await rpc.sendTransaction(createCommand(nonce, command, params), this.processingKey);
-      console.log("command processed with result:", result);
+      console.log(JSON.stringify(result, null, 2));
+      return result;
     } catch(e) {
       let reason = "";
       if (e instanceof Error) {

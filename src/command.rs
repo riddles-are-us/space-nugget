@@ -78,6 +78,7 @@ pub enum Activity {
     Create,
     Bid(u64, u64),
     Sell(u64),
+    Explore(u64),
 }
 
 impl CommandHandler for Activity {
@@ -103,8 +104,25 @@ impl CommandHandler for Activity {
                             Ok(())
                         }
                     },
+
+                    Activity::Explore(index) => {
+                        if player.data.inventory.len() <= (*index) as usize {
+                            Err(INVALID_NUGGET_INDEX)
+                        } else {
+                            let nuggetid = player.data.inventory[*index as usize];
+                            let mut nugget = NuggetInfo::get_object(nuggetid).unwrap();
+                            player.data.cost_balance(nugget.data.sysprice * 2)?;
+                            nugget.data.explore(rand[2])?;
+                            nugget.data.compute_sysprice();
+                            NuggetInfo::emit_event(nugget.data.id, &nugget.data);
+                            nugget.store();
+                            player.store();
+                            Ok(())
+                        }
+                    },
+
                     Activity::Sell(index) => {
-                        if player.data.inventory.len() >= (*index) as usize {
+                        if player.data.inventory.len() <= (*index) as usize {
                             Err(INVALID_NUGGET_INDEX)
                         } else {
                             let nuggetid = player.data.inventory[*index as usize];
@@ -181,9 +199,10 @@ pub fn decode_error(e: u32) -> &'static str {
         ERROR_NOT_SELECTED_PLAYER => "PlayerNotSelected",
         SELECTED_PLAYER_NOT_EXIST => "SelectedPlayerNotExist",
         PLAYER_NOT_ENOUGH_BALANCE=> "PlayerNotEnoughBalance",
-        INVALID_NUGGET_INDEX => "SpecifiedMemeIndexNotFound",
+        INVALID_NUGGET_INDEX => "SpecifiedNuggetIndexNotFound",
         PLAYER_NOT_ENOUGH_INVENTORY=> "PlayerInventoryFull",
         ERROR_BID_PRICE_INSUFFICIENT => "BidPriceInsufficient",
+        ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED => "NuggetAttributeAllExplored",
         _ => "Unknown",
     }
 }

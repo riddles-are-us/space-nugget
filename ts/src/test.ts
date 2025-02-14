@@ -26,7 +26,8 @@ async function main() {
   console.log(pubkey);
 
   let r = await player.rpc.queryConfig();
-  console.log(r);
+  console.log("config:", r);
+
   console.log("Start run CREATE_PLAYER...");
   await player.runCommand(INSTALL_PLAYER, 0n, []);
 
@@ -34,9 +35,13 @@ async function main() {
   let nonce = await player.getNonce();
   await player.runCommand(CREATE_NUGGET, nonce, []);
 
-  console.log("Start run BID_NUGGET ...");
+  console.log("Start run EXPLORE_NUGGET ...");
   nonce = await player.getNonce();
-  await player.runCommand(BID_NUGGET, nonce, [0n, 1n]);
+  await player.runCommand(EXPLORE_NUGGET, nonce, [0n]);
+
+  /*
+  console.log("Start run BID_NUGGET ...");
+  await player.getNonce();
 
   console.log("Start run query nuggets ...");
   try {
@@ -53,7 +58,7 @@ async function main() {
   } catch(e) {
     console.log(e);
   }
-
+  */
 }
 
 main();

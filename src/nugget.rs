@@ -3,6 +3,8 @@ use serde::Serialize;
 use zkwasm_rest_abi::{StorageData, MERKLE_MAP};
 use zkwasm_rest_convention::{IndexedObject, Position};
 
+use crate::error::ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED;
+
 #[derive(Clone, Serialize, Default, Copy)]
 pub struct BidInfo {
     pub bidprice: u64,
@@ -72,13 +74,26 @@ impl NuggetInfo {
            bid: None
        }
     }
+
+    pub fn explore(&mut self, rand: u64) -> Result<(), u32> {
+        let mut p: u64 = 1;
+        let r = rand.to_le_bytes();
+        for c in self.attributes.iter_mut() {
+            if *c == 0 {
+                *c = r[0].bitxor(r[1]);
+                return Ok(())
+            }
+        }
+        Err(ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED)
+    }
+
     pub fn compute_sysprice(&mut self) {
         let mut p: u64 = 1;
         for c in self.attributes {
             if c == 0 {
-                p = p * 3;
+                p = p + 2;
             } else {
-                p = p * ((c as u64) - 1)
+                p = p + ((c as u64) - 1)
             }
         }
         self.sysprice = p;

@@ -151,7 +151,7 @@ impl Transaction {
         } else if command == INSTALL_PLAYER {
             Command::InstallPlayer
         } else if command == EXPLORE_NUGGET {
-            Command::Activity (Activity::Sell(params[1]))
+            Command::Activity (Activity::Explore(params[1]))
         } else if command == SELL_NUGGET {
             Command::Activity (Activity::Sell(params[1]))
         } else if command == BID_NUGGET {
@@ -174,9 +174,9 @@ impl Transaction {
             Some(_) => Err(ERROR_PLAYER_ALREADY_EXIST),
             None => {
                 let mut player = Player::new(pkey);
-                if GLOBAL_STATE.0.borrow().airdrop > 50 {
-                    player.data.balance = 50;
-                    GLOBAL_STATE.0.borrow_mut().airdrop -= 50;
+                if GLOBAL_STATE.0.borrow().airdrop > 500 {
+                    player.data.balance = 500;
+                    GLOBAL_STATE.0.borrow_mut().airdrop -= 500;
                 } else {
                     player.data.balance = 0;
                 }
