@@ -1,6 +1,4 @@
-import { Service } from "zkwasm-ts-server";
-import {TxWitness} from "zkwasm-ts-server/src/prover";
-import {Event, EventModel} from "./event.js";
+import { TxWitness, Service, Event, EventModel, TxStateManager } from "zkwasm-ts-server";
 import { Position, IndexedObjectModel, IndexedObject, PositionModel, parseNuggetInfo} from "./info.js";
 import { Player} from "./api.js";
 import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
@@ -14,8 +12,7 @@ const uncommittedTxs: TxWitness[] = [];
 const service = new Service(eventCallback, batchedCallback, extra, bootstrap);
 await service.initialize();
 
-
-let currentUncommitMerkleRoot: string = merkleRootToBeHexString(service.merkleRoot);
+let txStateManager = new TxStateManager(merkleRootToBeHexString(service.merkleRoot));
 
 function extra (app: Express) {
   app.get('/data/nugget/:nid', async(req:any, res) => {
@@ -45,6 +42,7 @@ function extra (app: Express) {
         const jdoc = IndexedObject.fromMongooseDoc(d);
         return parseNuggetInfo(jdoc);
       });
+      console.log(jdoc);
       res.status(201).send({
         success: true,
         data: jdoc,
@@ -66,25 +64,23 @@ let preemptcounter = 0;
 
 async function bootstrap(merkleRoot: string): Promise<TxWitness[]> {
 	/*
-	const txs = await getTxFromCommit(merkleRoot);
-	console.log("tsx in bootstrap:", txs);
-	return txs;
+  const txs = await txStateManager.getTxFromCommit(merkleRoot);
+  console.log("tsx in bootstrap:", txs);
+  return txs;
 	*/
 	return [];
 }
 
 async function batchedCallback(arg: TxWitness[], preMerkle: string, postMerkle: string) {
-	/*
-	currentUncommitMerkleRoot = postMerkle;
-	await clearTxFromCommit(currentUncommitMerkleRoot);
-	preemptcounter = 0;
-	*/
-	return;
+  await txStateManager.moveToCommit(postMerkle);
 }
 
 async function eventCallback(arg: TxWitness, data: BigUint64Array) {
-	//insertTxIntoCommit(currentUncommitMerkleRoot, arg, preemptcounter);
-	//preemptcounter ++;
+  let pass = await txStateManager.insertTxIntoCommit(arg);
+  if (pass) { // already tracked event
+    return;
+  }
+
 	if(data.length == 0) {
 		return;
 	}

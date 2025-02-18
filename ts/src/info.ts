@@ -51,18 +51,19 @@ export class IndexedObject {
 export function parseNuggetInfo(iobj: IndexedObject) {
   console.log(iobj);
   let bid = null;
-  if (iobj.data[5] != 0n) {
+  if (iobj.data[6] != 0n) {
     bid = {
-      bidprice: iobj.data[5],
-      bider: [iobj.data[6], iobj.data[7]],
+      bidprice: Number(iobj.data[6]),
+      bider: [iobj.data[7].toString(), iobj.data[7].toString()],
     }
   }
   return  {
     id: Number(iobj.index),
-    attributes: Number(iobj.data[1]),
+    attributes: iobj.data[1].toString(),
     cycle: Number(iobj.data[2]),
-    sysprice: Number(iobj.data[3]),
-    askprice: Number(iobj.data[4]),
+    feature: Number(iobj.data[3]),
+    sysprice: Number(iobj.data[4]),
+    askprice: Number(iobj.data[5]),
     bid: bid,
   }
 }

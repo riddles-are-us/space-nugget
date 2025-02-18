@@ -16,6 +16,7 @@ pub struct NuggetInfo {
     pub id: u64,
     pub attributes: [u8; 8],
     pub cycle: u64,
+    pub feature: u64,
     pub sysprice: u64,
     pub askprice: u64,
     pub bid: Option<BidInfo>,
@@ -26,6 +27,7 @@ impl StorageData for NuggetInfo {
         let id = *u64data.next().unwrap();
         let attributes = (*u64data.next().unwrap()).to_le_bytes();
         let cycle = *u64data.next().unwrap();
+        let feature = *u64data.next().unwrap();
         let sysprice = *u64data.next().unwrap();
         let askprice = *u64data.next().unwrap();
         let bid = *u64data.next().unwrap();
@@ -40,6 +42,7 @@ impl StorageData for NuggetInfo {
             id,
             attributes,
             cycle,
+            feature,
             sysprice,
             askprice,
             bid: bidder,
@@ -49,6 +52,7 @@ impl StorageData for NuggetInfo {
         data.push(self.id);
         data.push(u64::from_le_bytes(self.attributes));
         data.push(self.cycle);
+        data.push(self.feature);
         data.push(self.sysprice);
         data.push(self.askprice);
         match self.bid {
@@ -69,6 +73,7 @@ impl NuggetInfo {
            id,
            cycle: 0,
            attributes: [c[0].bitxor(c[1]), 0, 0, 0, 0, 0, 0, 0],
+           feature: rand % 8,
            sysprice: 0,
            askprice: 0,
            bid: None
@@ -76,11 +81,10 @@ impl NuggetInfo {
     }
 
     pub fn explore(&mut self, rand: u64) -> Result<(), u32> {
-        let mut p: u64 = 1;
         let r = rand.to_le_bytes();
         for c in self.attributes.iter_mut() {
             if *c == 0 {
-                *c = r[0].bitxor(r[1]);
+                *c = (r[0].bitxor(r[1]) % 9) + 1;
                 return Ok(())
             }
         }
@@ -88,12 +92,22 @@ impl NuggetInfo {
     }
 
     pub fn compute_sysprice(&mut self) {
-        let mut p: u64 = 1;
-        for c in self.attributes {
+        let plus_pos = self.feature % 6;
+        let mut p: u64 = 0;
+        for i in 0..(plus_pos as usize) {
+            let c = self.attributes[i];
             if c == 0 {
                 p = p + 2;
             } else {
-                p = p + ((c as u64) - 1)
+                p = p + ((c as u64 - 1) % 10)
+            }
+        }
+        for i in (plus_pos as usize) .. 7 {
+            let c = self.attributes[i];
+            if c == 0 {
+                p = p * 2;
+            } else {
+                p = p * ((c as u64 - 1) % 10)
             }
         }
         self.sysprice = p;

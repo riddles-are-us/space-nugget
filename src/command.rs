@@ -111,7 +111,7 @@ impl CommandHandler for Activity {
                         } else {
                             let nuggetid = player.data.inventory[*index as usize];
                             let mut nugget = NuggetInfo::get_object(nuggetid).unwrap();
-                            player.data.cost_balance(nugget.data.sysprice * 2)?;
+                            player.data.cost_balance(nugget.data.sysprice / 4)?;
                             nugget.data.explore(rand[2])?;
                             nugget.data.compute_sysprice();
                             NuggetInfo::emit_event(nugget.data.id, &nugget.data);
@@ -169,6 +169,7 @@ impl CommandHandler for Activity {
                                             });
                                             last_player.store();
                                             n.store();
+                                            NuggetInfo::emit_event(n.data.id, &n.data);
                                             Ok(())
                                         }
                                     },
@@ -178,6 +179,7 @@ impl CommandHandler for Activity {
                                             bidder: pid.clone(),
                                         });
                                         n.store();
+                                        NuggetInfo::emit_event(n.data.id, &n.data);
                                         Ok(())
                                     }
                                 }

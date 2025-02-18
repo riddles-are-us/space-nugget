@@ -31,8 +31,15 @@ async function main() {
   console.log("Start run CREATE_PLAYER...");
   await player.runCommand(INSTALL_PLAYER, 0n, []);
 
+  let g = await player.getState();
+  console.log("state.", g);
+
+
   console.log("Start run CREATE_NUGGET ...");
   let nonce = await player.getNonce();
+  await player.runCommand(CREATE_NUGGET, nonce, []);
+  await player.runCommand(CREATE_NUGGET, nonce, []);
+  await player.runCommand(CREATE_NUGGET, nonce, []);
   await player.runCommand(CREATE_NUGGET, nonce, []);
 
   console.log("Start run EXPLORE_NUGGET ...");
