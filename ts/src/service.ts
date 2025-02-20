@@ -1,5 +1,5 @@
 import { TxWitness, Service, Event, EventModel, TxStateManager } from "zkwasm-ts-server";
-import { Position, IndexedObjectModel, IndexedObject, PositionModel, parseNuggetInfo} from "./info.js";
+import { IndexedObjectModel, IndexedObject} from "./info.js";
 import { Player} from "./api.js";
 import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
 import { Express } from "express";
@@ -23,7 +23,27 @@ function extra (app: Express) {
         {index: nid},
       );
       let data = doc.map((d) => {
-        return parseNuggetInfo(IndexedObject.fromMongooseDoc(d))
+        return IndexedObject.fromMongooseDoc(d).toJSON()
+      })
+      res.status(201).send({
+        success: true,
+        data: data,
+      });
+    } catch (e) {
+      console.log(e);
+      res.status(500).send()
+    }
+  });
+
+  app.get('/data/bid/:pid1/:pid2', async(req:any, res) => {
+    try {
+      let pid1 = req.params.pid1;
+      let pid2 = req.params.pid2;
+      let doc = await IndexedObjectModel.find(
+          {bidder: [pid1, pid2]},
+      );
+      let data = doc.map((d) => {
+          return IndexedObject.fromMongooseDoc(d).toJSON()
       })
       res.status(201).send({
         success: true,
@@ -40,7 +60,7 @@ function extra (app: Express) {
     try {
       const jdoc = doc.map((d) => {
         const jdoc = IndexedObject.fromMongooseDoc(d);
-        return parseNuggetInfo(jdoc);
+        return jdoc.toJSON();
       });
       console.log(jdoc);
       res.status(201).send({
@@ -121,13 +141,6 @@ async function eventCallback(arg: TxWitness, data: BigUint64Array) {
 			case EVENT_POSITION_UPDATE:
 				{
 					console.log("position event");
-					let position = Position.fromEvent(eventData);
-					let doc = await PositionModel.findOneAndUpdate(
-							{pid_1: position.pid_1, pid_2: position.pid_2, object_index: position.object_index},
-							position.toObject(),
-							{upsert: true}
-					);
-					console.log("save position", position.pid_1, position.pid_2, position.object_index, doc);
 				}
 				break;
 			case EVENT_NUGGET_UPDATE:

@@ -7,7 +7,7 @@ export class IndexedObject {
     data: bigint[];
 
     constructor(index: number, data: bigint[]) {
-        this.index = index ;
+        this.index = index;
         this.data = data;
     }
 
@@ -22,25 +22,40 @@ export class IndexedObject {
     }
 
     toMongooseDoc(): mongoose.Document {
-        return new IndexedObjectModel({
-            index: this.index,
-            data: this.data,
-        });
+        return new IndexedObjectModel(this.toObject());
     }
 
-    toObject(): { index: number, data: bigint[]} {
+    toObject(): { index: number, data: string[], bidder: string[] | null} {
+        let bidder = null;
+        if (this.data[6] != 0n) {
+          bidder = [this.data[7].toString(), this.data[8].toString()];
+        }
         return {
+            bidder: bidder,
             index: this.index,
-            data: this.data,
+            data: this.data.map((x) => x.toString()),
         };
     }
 
-    static fromObject(obj: { index: number, data: bigint[]}): IndexedObject {
-        return new IndexedObject(obj.index, obj.data);
-    }
-
     toJSON() {
-        return this.toObject();
+      const iobj = this.toObject();
+      let bidder = null;
+      if (iobj.bidder != null) {
+        bidder = {
+          bidder: [iobj.bidder[0], iobj.bidder[1]],
+          bidprice: Number(iobj.data[6]),
+        }
+      }
+
+      return  {
+        id: Number(iobj.index),
+        attributes: iobj.data[1].toString(),
+        cycle: Number(iobj.data[2]),
+        feature: Number(iobj.data[3]),
+        sysprice: Number(iobj.data[4]),
+        askprice: Number(iobj.data[5]),
+        bid: bidder,
+      }
     }
 
     static fromEvent(data: BigUint64Array): IndexedObject {
@@ -48,133 +63,18 @@ export class IndexedObject {
     }
 }
 
-export function parseNuggetInfo(iobj: IndexedObject) {
-  console.log(iobj);
-  let bid = null;
-  if (iobj.data[6] != 0n) {
-    bid = {
-      bidprice: Number(iobj.data[6]),
-      bider: [iobj.data[7].toString(), iobj.data[7].toString()],
-    }
-  }
-  return  {
-    id: Number(iobj.index),
-    attributes: iobj.data[1].toString(),
-    cycle: Number(iobj.data[2]),
-    feature: Number(iobj.data[3]),
-    sysprice: Number(iobj.data[4]),
-    askprice: Number(iobj.data[5]),
-    bid: bid,
-  }
-}
-
-
-
 // Define the schema for the Token model
 const indexedObjectSchema = new mongoose.Schema({
     index: { type: Number, required: true, unique: true},
+    bidder:  {
+      type: [String],
+      required: false,
+    },
     data: {
-        type: [BigInt],
+        type: [String],
         required: true,
     },
 });
 
 // Create the Token model
 export const IndexedObjectModel = mongoose.model('IndexedObject', indexedObjectSchema);
-
-export class Position {
-    pid_1: bigint;
-    pid_2: bigint;
-    object_index: bigint;
-    data: bigint[];
-    constructor(pid_1: bigint, pid_2: bigint, object_index: bigint, data: bigint[]) {
-        this.pid_1 = pid_1;
-        this.pid_2 = pid_2;
-        this.object_index = object_index;
-        this.data = data;
-    }
-
-    static fromMongooseDoc(doc: mongoose.Document): Position {
-        const obj = doc.toObject({
-            transform: (doc, ret) => {
-                delete ret._id;
-                return ret;
-            }
-        });
-        return new Position(obj.pid_1, obj.pid_2, obj.object_index, obj.data);
-    }
-
-    toMongooseDoc(): mongoose.Document {
-        return new PositionModel({
-            pid_1: this.pid_1,
-            pid_2: this.pid_2,
-            object_index: this.object_index,
-            data: this.data,
-        });
-    }
-
-    toObject(): { pid_1: bigint, pid_2: bigint, object_index: bigint, data: bigint[] } {
-        return {
-            pid_1: this.pid_1,
-            pid_2: this.pid_2,
-            object_index: this.object_index,
-            data: this.data,
-        };
-    }
-
-    static fromObject(obj: { pid_1: bigint, pid_2: bigint, object_index: bigint, data: bigint[]}): Position {
-        return new Position(obj.pid_1, obj.pid_2, obj.object_index, obj.data);
-    }
-
-    toJSON() {
-        return {
-            pid_1: this.pid_1.toString(),
-            pid_2: this.pid_2.toString(),
-            object_index: this.object_index.toString(),
-            data: this.data.toString()
-        };
-    }
-
-    static fromJSON(obj: { pid_1: string, pid_2: string, object_index: string, data: string[]}): Position {
-        return new Position(
-            BigInt(obj.pid_1),
-            BigInt(obj.pid_2),
-            BigInt(obj.object_index),
-            obj.data.map((x) => BigInt(x)),
-        );
-    }
-    static fromEvent(data: BigUint64Array): Position {
-        let bigintarray:bigint[] = Array.from(data);
-        return new Position(data[0], data[1], data[2], bigintarray.slice(3));
-    }
-
-}
-
-// 创建 Schema
-const PositionSchema = new mongoose.Schema({
-    pid_1: {
-        type: BigInt,
-        required: true
-    },
-    pid_2: {
-        type: BigInt,
-        required: true
-    },
-    object_index: {
-        type: BigInt,
-        required: true
-    },
-    data : {
-        type: [BigInt],
-        required: true
-    },
-});
-
-// add composition index
-PositionSchema.index(
-    { pid_1: 1, pid_2: 1, object_index: 1 },
-    { unique: true }
-);
-
-export const PositionModel = mongoose.model('Position', PositionSchema);
-
