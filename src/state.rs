@@ -1,11 +1,9 @@
 use crate::config::ADMIN_PUBKEY;
-use crate::nugget::NuggetInfo;
 use crate::player::{Owner, GamePlayer};
 use crate::settlement::SettlementInfo;
 use crate::Player;
 use serde::Serialize;
 use std::cell::RefCell;
-use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_abi::MERKLE_MAP;
 use zkwasm_rust_sdk::require;
 use crate::command::Command;
@@ -14,7 +12,7 @@ use crate::command::Deposit;
 use crate::command::Withdraw;
 use crate::command::CommandHandler;
 use crate::error::*;
-use zkwasm_rest_convention::{clear_events, Position};
+use zkwasm_rest_convention::clear_events;
 
 
 #[derive(Serialize)]
@@ -223,8 +221,6 @@ impl Transaction {
             }
         }
         let txsize = GLOBAL_STATE.0.borrow_mut().txsize;
-        unsafe {
-            clear_events(vec![e as u64, txsize])
-        }
+        clear_events(vec![e as u64, txsize])
     }
 }

@@ -1,7 +1,9 @@
 use std::{ops::BitXor, slice::IterMut};
 use serde::Serialize;
-use zkwasm_rest_abi::{StorageData, MERKLE_MAP};
-use zkwasm_rest_convention::{IndexedObject, Position};
+use crate::player::PlayerData;
+use zkwasm_rest_abi::Player; 
+use zkwasm_rest_abi::StorageData;
+use zkwasm_rest_convention::IndexedObject;
 
 use crate::error::ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED;
 
@@ -111,6 +113,21 @@ impl NuggetInfo {
             }
         }
         self.sysprice = p;
+    }
+}
+
+pub trait BidObject<PlayerData: StorageData + Default> {
+    fn get_bidder(&self) -> Option<Player<PlayerData>>;
+    fn replace_bidder(&mut self);
+}
+
+impl BidObject<PlayerData> for NuggetInfo {
+    fn get_bidder(&self) -> Option<Player::<PlayerData>> {
+        let c = self.bid.unwrap();
+        Player::<PlayerData>::get_from_pid(&c.bidder)
+    }
+    fn replace_bidder(&mut self) {
+        todo!()
     }
 }
 

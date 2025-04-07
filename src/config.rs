@@ -1,7 +1,4 @@
 use serde::Serialize;
-
-use crate::state::GLOBAL_STATE;
-
 lazy_static::lazy_static! {
     pub static ref ADMIN_PUBKEY: [u64; 4] = {
         let bytes = include_bytes!("./admin.pubkey");

@@ -1,10 +1,10 @@
 use crate::nugget::{BidInfo, NuggetInfo};
-use zkwasm_rest_convention::{IndexedObject, Position};
+use zkwasm_rest_convention::IndexedObject;
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
 use crate::player::GamePlayer;
-use crate::state::{GlobalState, GLOBAL_STATE};
+use crate::state::GLOBAL_STATE;
 use crate::error::*;
 
 #[derive (Clone)]
@@ -21,7 +21,7 @@ pub enum Command {
 
 
 pub trait CommandHandler {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], _counter: u64) -> Result<(), u32>;
+    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], counter: u64) -> Result<(), u32>;
 }
 
 #[derive (Clone)]
@@ -82,12 +82,12 @@ pub enum Activity {
 }
 
 impl CommandHandler for Activity {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], counter: u64) -> Result<(), u32> {
-        let counter = GlobalState::get_counter();
+    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], _counter: u64) -> Result<(), u32> {
         let mut player = GamePlayer::get_from_pid(pid);
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
+                player.check_and_inc_nonce(nonce);
                 match self {
                     Activity::Create => {
                         if player.data.inventory.len() > player.data.inventory_size as usize {
@@ -114,6 +114,12 @@ impl CommandHandler for Activity {
                             player.data.cost_balance(nugget.data.sysprice / 4)?;
                             nugget.data.explore(rand[2])?;
                             nugget.data.compute_sysprice();
+                            if let Some(bidder) = nugget.data.bid {
+                                let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
+                                last_player.data.inc_balance(bidder.bidprice);
+                                last_player.store();
+                                nugget.data.bid = None;
+                            };
                             NuggetInfo::emit_event(nugget.data.id, &nugget.data);
                             nugget.store();
                             player.store();
@@ -187,7 +193,6 @@ impl CommandHandler for Activity {
                             None => Err(INVALID_NUGGET_INDEX)
                         }
                     }
-
                 }
             }
         }

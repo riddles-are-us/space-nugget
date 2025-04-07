@@ -1,11 +1,7 @@
-use crate::nugget::NuggetInfo;
 use crate::Player;
 use crate::StorageData;
 use core::slice::IterMut;
 use serde::Serialize;
-use zkwasm_rest_convention::IndexedObject;
-use zkwasm_rest_convention::Position;
-use zkwasm_rest_convention::Wrapped;
 use crate::error::*;
 
 #[derive(Clone, Serialize, Debug)]
