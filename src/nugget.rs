@@ -1,6 +1,7 @@
 use std::{ops::BitXor, slice::IterMut};
 use serde::Serialize;
 use crate::player::PlayerData;
+use crate::player::WithBalance;
 use zkwasm_rest_abi::Player; 
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_convention::IndexedObject;
@@ -116,9 +117,10 @@ impl NuggetInfo {
     }
 }
 
-pub trait BidObject<PlayerData: StorageData + Default> {
+pub trait BidObject<PlayerData: StorageData + Default + WithBalance> {
     fn get_bidder(&self) -> Option<Player<PlayerData>>;
-    fn replace_bidder(&mut self);
+    fn clear_bidder(&mut self) -> Option<Player<PlayerData>>;
+    fn replace_bidder(&mut self, player: &mut Player<PlayerData>, amount: u64) -> Result<Option<Player<PlayerData>>, u32>;
 }
 
 impl BidObject<PlayerData> for NuggetInfo {
@@ -126,8 +128,24 @@ impl BidObject<PlayerData> for NuggetInfo {
         let c = self.bid.unwrap();
         Player::<PlayerData>::get_from_pid(&c.bidder)
     }
-    fn replace_bidder(&mut self) {
-        todo!()
+    fn clear_bidder(&mut self) -> Option<Player<PlayerData>>  {
+        let player = self.bid.map(|c| {
+            let mut player = Player::<PlayerData>::get_from_pid(&c.bidder).unwrap();
+            player.data.inc_balance(c.bidprice);
+            player
+        });
+        self.bid = None;
+        player
+    }
+
+    fn replace_bidder(&mut self, player: &mut Player<PlayerData>, amount: u64) -> Result<Option<Player<PlayerData>>, u32> {
+        let old_bidder = self.clear_bidder();
+        self.bid = Some (BidInfo {
+            bidprice: amount,
+            bidder: player.player_id.clone(),
+        });
+        player.data.cost_balance(amount)?;
+        Ok(old_bidder)
     }
 }
 

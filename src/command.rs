@@ -4,6 +4,7 @@ use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use crate::settlement::SettlementInfo;
 use crate::player::GamePlayer;
+use crate::player::WithBalance;
 use crate::state::GLOBAL_STATE;
 use crate::error::*;
 

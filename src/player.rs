@@ -63,8 +63,13 @@ impl Owner for GamePlayer {
     }
 }
 
-impl PlayerData {
-    pub fn cost_balance(&mut self, amount: u64) -> Result<(), u32> {
+pub trait WithBalance {
+    fn cost_balance(&mut self, amount: u64) -> Result<(), u32>;
+    fn inc_balance(&mut self, amount: u64);
+}
+
+impl WithBalance for PlayerData {
+    fn cost_balance(&mut self, amount: u64) -> Result<(), u32> {
         if self.balance < amount {
             Err(PLAYER_NOT_ENOUGH_BALANCE)
         } else {
@@ -72,7 +77,7 @@ impl PlayerData {
             Ok(())
         }
     }
-    pub fn inc_balance(&mut self, amount: u64) {
+    fn inc_balance(&mut self, amount: u64) {
         self.balance += amount;
     }
 }
