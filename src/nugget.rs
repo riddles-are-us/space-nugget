@@ -5,6 +5,7 @@ use crate::player::WithBalance;
 use zkwasm_rest_abi::Player; 
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_convention::IndexedObject;
+use crate::error::ERROR_BID_PRICE_INSUFFICIENT;
 
 use crate::error::ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED;
 
@@ -118,34 +119,45 @@ impl NuggetInfo {
 }
 
 pub trait BidObject<PlayerData: StorageData + Default + WithBalance> {
-    fn get_bidder(&self) -> Option<Player<PlayerData>>;
-    fn clear_bidder(&mut self) -> Option<Player<PlayerData>>;
-    fn replace_bidder(&mut self, player: &mut Player<PlayerData>, amount: u64) -> Result<Option<Player<PlayerData>>, u32>;
-}
-
-impl BidObject<PlayerData> for NuggetInfo {
-    fn get_bidder(&self) -> Option<Player::<PlayerData>> {
-        let c = self.bid.unwrap();
-        Player::<PlayerData>::get_from_pid(&c.bidder)
-    }
-    fn clear_bidder(&mut self) -> Option<Player<PlayerData>>  {
-        let player = self.bid.map(|c| {
+    const INSUFF: u32;
+    fn get_bidder(&self) -> Option<BidInfo>;
+    fn set_bidder(&mut self, bidder: Option<BidInfo>);
+    fn clear_bidder(&mut self) -> Option<Player<PlayerData>> {
+         let player = self.get_bidder().map(|c| {
             let mut player = Player::<PlayerData>::get_from_pid(&c.bidder).unwrap();
             player.data.inc_balance(c.bidprice);
             player
         });
-        self.bid = None;
+        self.set_bidder(None); 
         player
     }
-
     fn replace_bidder(&mut self, player: &mut Player<PlayerData>, amount: u64) -> Result<Option<Player<PlayerData>>, u32> {
+        self.get_bidder().map_or(Ok(()), |x| {
+            let bidprice = x.bidprice;
+            if bidprice >= amount {
+                Err(Self::INSUFF)
+            } else {
+                Ok(())
+            }
+        })?;
         let old_bidder = self.clear_bidder();
-        self.bid = Some (BidInfo {
+        self.set_bidder(Some (BidInfo {
             bidprice: amount,
             bidder: player.player_id.clone(),
-        });
+        }));
         player.data.cost_balance(amount)?;
         Ok(old_bidder)
+    }
+}
+
+impl BidObject<PlayerData> for NuggetInfo {
+    const INSUFF:u32 = ERROR_BID_PRICE_INSUFFICIENT;
+    fn get_bidder(&self) -> Option<BidInfo> {
+        self.bid
+    }
+
+    fn set_bidder(&mut self, bidder: Option<BidInfo>) {
+        self.bid = bidder;
     }
 }
 

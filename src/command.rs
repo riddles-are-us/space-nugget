@@ -1,4 +1,4 @@
-use crate::nugget::{BidInfo, NuggetInfo};
+use crate::nugget::NuggetInfo;
 use zkwasm_rest_convention::IndexedObject;
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
@@ -7,6 +7,7 @@ use crate::player::GamePlayer;
 use crate::player::WithBalance;
 use crate::state::GLOBAL_STATE;
 use crate::error::*;
+use crate::nugget::BidObject;
 
 #[derive (Clone)]
 pub enum Command {
@@ -115,6 +116,7 @@ impl CommandHandler for Activity {
                             player.data.cost_balance(nugget.data.sysprice / 4)?;
                             nugget.data.explore(rand[2])?;
                             nugget.data.compute_sysprice();
+                            nugget.data.clear_bidder();
                             if let Some(bidder) = nugget.data.bid {
                                 let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
                                 last_player.data.inc_balance(bidder.bidprice);
@@ -159,37 +161,14 @@ impl CommandHandler for Activity {
                     },
 
                     Activity::Bid(nid, price) => {
-                        player.data.cost_balance(*price)?;
                         let nugget = NuggetInfo::get_object(*nid);
                         match nugget {
                             Some(mut n) => {
-                                match n.data.bid {
-                                    Some(bidder) => {
-                                        if bidder.bidprice >= *price {
-                                            Err(ERROR_BID_PRICE_INSUFFICIENT)
-                                        } else {
-                                            let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
-                                            last_player.data.inc_balance(bidder.bidprice);
-                                            n.data.bid = Some(BidInfo {
-                                                bidprice: *price,
-                                                bidder: pid.clone(),
-                                            });
-                                            last_player.store();
-                                            n.store();
-                                            NuggetInfo::emit_event(n.data.id, &n.data);
-                                            Ok(())
-                                        }
-                                    },
-                                    None => {
-                                        n.data.bid = Some(BidInfo {
-                                            bidprice: *price,
-                                            bidder: pid.clone(),
-                                        });
-                                        n.store();
-                                        NuggetInfo::emit_event(n.data.id, &n.data);
-                                        Ok(())
-                                    }
-                                }
+                                let lastbidder = n.data.replace_bidder(player, *price)?;
+                                lastbidder.map(|p| p.store());
+                                n.store();
+                                NuggetInfo::emit_event(n.data.id, &n.data);
+                                Ok(())
                             },
                             None => Err(INVALID_NUGGET_INDEX)
                         }
