@@ -116,16 +116,11 @@ impl CommandHandler for Activity {
                             player.data.cost_balance(nugget.data.sysprice / 4)?;
                             nugget.data.explore(rand[2])?;
                             nugget.data.compute_sysprice();
-                            nugget.data.clear_bidder();
-                            if let Some(bidder) = nugget.data.bid {
-                                let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
-                                last_player.data.inc_balance(bidder.bidprice);
-                                last_player.store();
-                                nugget.data.bid = None;
-                            };
+                            let bidder = nugget.data.clear_bidder();
                             NuggetInfo::emit_event(nugget.data.id, &nugget.data);
                             nugget.store();
                             player.store();
+                            bidder.map(|x| x.store());
                             Ok(())
                         }
                     },
@@ -147,12 +142,12 @@ impl CommandHandler for Activity {
                                 },
                                 Some (bidder) => {
                                     player.data.inc_balance(bidder.bidprice);
-                                    let mut last_player= GamePlayer::get_from_pid(&bidder.bidder).unwrap();
-                                    last_player.data.inventory.push(nugget.data.id);
+                                    let mut bidder = nugget.data.clear_bidder().unwrap();
+                                    bidder.data.inventory.push(nugget.data.id);
                                     player.data.inventory.swap_remove(*index as usize);
                                     nugget.store();
                                     player.store();
-                                    last_player.store();
+                                    bidder.store();
                                 }
                             }
                             NuggetInfo::emit_event(nugget.data.id, &nugget.data);
