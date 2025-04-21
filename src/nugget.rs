@@ -96,7 +96,7 @@ impl NuggetInfo {
     }
 
     pub fn compute_sysprice(&mut self) {
-        let plus_pos = (self.feature % 6) as usize;
+        let plus_pos = (self.feature % 7) as usize;
         let mut p: u64 = self.attributes[0] as u64;
         for i in 1..(plus_pos + 1) {
             let c = self.attributes[i];
