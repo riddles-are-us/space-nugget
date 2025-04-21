@@ -159,9 +159,11 @@ impl CommandHandler for Activity {
                         let nugget = NuggetInfo::get_object(*nid);
                         match nugget {
                             Some(mut n) => {
+                                player.data.cost_balance(n.data.sysprice / 4)?;
                                 let lastbidder = n.data.replace_bidder(player, *price)?;
                                 lastbidder.map(|p| p.store());
                                 n.store();
+                                player.store();
                                 NuggetInfo::emit_event(n.data.id, &n.data);
                                 Ok(())
                             },
