@@ -194,7 +194,7 @@ impl Transaction {
 
     pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> Vec<u64> {
         let pid = GamePlayer::pkey_to_pid(&pkey);
-        let counter = GLOBAL_STATE.0.borrow_mut().counter;
+        let counter = GLOBAL_STATE.0.borrow().counter;
         let e = match &self.command {
             Command::Tick => {
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
@@ -220,7 +220,7 @@ impl Transaction {
                 self.tick();
             }
         }
-        let txsize = GLOBAL_STATE.0.borrow_mut().txsize;
+        let txsize = GLOBAL_STATE.0.borrow().txsize;
         clear_events(vec![e as u64, txsize])
     }
 }
