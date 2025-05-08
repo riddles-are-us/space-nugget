@@ -38,6 +38,8 @@ const BID_NUGGET: u64 = 6;
 const CREATE_NUGGET: u64 = 7;
 const WITHDRAW: u64 = 8;
 const DEPOSIT: u64 = 9;
+const RECYCLE_NUGGET: u64 = 10;
+const LIST_NUGGET: u64 = 11;
 
 
 
@@ -64,10 +66,12 @@ impl GlobalState {
     }
 
     pub fn preempt() -> bool {
-        let counter = GLOBAL_STATE.0.borrow().counter;
-        let txsize = GLOBAL_STATE.0.borrow().txsize;
+        let mut state = GLOBAL_STATE.0.borrow_mut();
+        let counter = state.counter;
+        let txsize = state.txsize;
         let withdraw_size = SettlementInfo::settlement_size();
-        if counter % 600 == 0 || txsize >= 100 || withdraw_size > 40 {
+        if counter % 600 == 0 || txsize >= 10 || withdraw_size > 40 {
+            state.txsize = 0;
             return true;
         } else {
             return false;
@@ -152,6 +156,10 @@ impl Transaction {
             Command::Activity (Activity::Explore(params[1]))
         } else if command == SELL_NUGGET {
             Command::Activity (Activity::Sell(params[1]))
+        } else if command == RECYCLE_NUGGET {
+            Command::Activity (Activity::Recycle(params[1]))
+        } else if command == LIST_NUGGET {
+            Command::Activity (Activity::List(params[1], params[2]))
         } else if command == BID_NUGGET {
             Command::Activity (Activity::Bid(params[1], params[2]))
         } else if command == CREATE_NUGGET {
@@ -172,12 +180,7 @@ impl Transaction {
             Some(_) => Err(ERROR_PLAYER_ALREADY_EXIST),
             None => {
                 let mut player = Player::new(pkey);
-                if GLOBAL_STATE.0.borrow().airdrop > 500 {
-                    player.data.balance = 500;
-                    GLOBAL_STATE.0.borrow_mut().airdrop -= 500;
-                } else {
-                    player.data.balance = 0;
-                }
+                player.data.balance = 100000;
                 player.store();
                 Ok(())
             }

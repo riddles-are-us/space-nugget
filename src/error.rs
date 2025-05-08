@@ -8,5 +8,9 @@ pub const PLAYER_NOT_ENOUGH_INVENTORY: u32 = 7;
 pub const PLAYER_NOT_ENOUGH_BALANCE: u32 = 8;
 pub const INVALID_NUGGET_INDEX: u32 = 9;
 pub const NOTHING_TO_COLLECT: u32 = 10;
+pub const NUGGET_IN_USE: u32 = 11;
+pub const ERROR_NO_BIDDER: u32 = 12;
+pub const INVALID_MARKET_INDEX: u32 = 13;
+pub const ERROR_NOT_LISTED: u32 = 14;
 
 

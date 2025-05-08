@@ -10,6 +10,8 @@ const BID_NUGGET = 6n;
 const CREATE_NUGGET = 7n;
 const WITHDRAW = 8n;
 const DEPOSIT = 9n;
+const RECYCLE_NUGGET = 10n;
+const LIST_NUGGET = 11n;
 
 let account = "1234";
 
@@ -38,17 +40,14 @@ async function main() {
   console.log("Start run CREATE_NUGGET ...");
   let nonce = await player.getNonce();
   await player.runCommand(CREATE_NUGGET, nonce, []);
-  await player.runCommand(CREATE_NUGGET, nonce, []);
-  await player.runCommand(CREATE_NUGGET, nonce, []);
-  await player.runCommand(CREATE_NUGGET, nonce, []);
 
   console.log("Start run EXPLORE_NUGGET ...");
   nonce = await player.getNonce();
   await player.runCommand(EXPLORE_NUGGET, nonce, [0n]);
 
-  /*
-  console.log("Start run BID_NUGGET ...");
-  await player.getNonce();
+  console.log("Start run LIST_NUGGET ...");
+  nonce = await player.getNonce();
+  await player.runCommand(LIST_NUGGET, nonce, [0n, 10n]);
 
   console.log("Start run query nuggets ...");
   try {
@@ -65,7 +64,45 @@ async function main() {
   } catch(e) {
     console.log(e);
   }
-  */
+
+  let marketid = 0;
+
+  console.log("Start run query markets...");
+  try {
+    let data:any = await player.rpc.queryData(`markets`);
+    console.log(data);
+    marketid = data.data[0].marketid;
+    console.log("Start run BID_NUGGET ...");
+    console.log(JSON.stringify(data.data[0]));
+    nonce = await player.getNonce();
+    await player.runCommand(BID_NUGGET, nonce, [BigInt(marketid), 8n]);
+  } catch(e) {
+    console.log(e);
+  }
+
+  console.log("Start run query markets...");
+  try {
+    let data:any = await player.rpc.queryData(`markets`);
+    console.log(data);
+  } catch(e) {
+    console.log(e);
+  }
+
+  try {
+    console.log("SELL NUGGET ...");
+    nonce = await player.getNonce();
+    await player.runCommand(SELL_NUGGET, nonce, [BigInt(marketid)]);
+  } catch(e) {
+    console.log(e);
+  }
+
+  console.log("Start run query markets...");
+  try {
+    let data:any = await player.rpc.queryData(`markets`);
+    console.log(data);
+  } catch(e) {
+    console.log(e);
+  }
 }
 
 main();

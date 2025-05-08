@@ -1,9 +1,10 @@
 import { TxWitness, Service, Event, EventModel, TxStateManager } from "zkwasm-ts-server";
-import { IndexedObjectModel, IndexedObject} from "./info.js";
+import { NuggetObjectModel, MarketObjectModel, IndexedObject, docToJSON} from "./info.js";
 import { Express } from "express";
-import {merkleRootToBeHexString} from "zkwasm-ts-server/src/lib.js";
+import { merkleRootToBeHexString } from "zkwasm-ts-server/src/lib.js";
+import mongoose from 'mongoose';
 
-const service = new Service(eventCallback, batchedCallback, extra, bootstrap);
+const service = new Service(eventCallback, batchedCallback, extra);
 await service.initialize();
 
 let txStateManager = new TxStateManager(merkleRootToBeHexString(service.merkleRoot));
@@ -12,12 +13,12 @@ function extra (app: Express) {
   app.get('/data/nugget/:nid', async(req:any, res) => {
     try {
       let nid = req.params.nid;
-      const doc = await IndexedObjectModel.find(
+      const doc = await NuggetObjectModel.find(
         //{index: Number(nid)},
-        {index: nid},
+        {id: nid},
       );
       let data = doc.map((d) => {
-        return IndexedObject.fromMongooseDoc(d).toJSON()
+        return docToJSON(d);
       })
       res.status(201).send({
         success: true,
@@ -33,11 +34,11 @@ function extra (app: Express) {
       try {
           let pid1 = req.params.pid1;
           let pid2 = req.params.pid2;
-          let doc = await IndexedObjectModel.find(
-              {bidder: [pid1, pid2]},
+          let doc = await MarketObjectModel.find(
+              {"bidder.bidder": [pid1, pid2]},
           );
-          let data = doc.map((d) => {
-              return IndexedObject.fromMongooseDoc(d).toJSON()
+          let data = doc.map((d: mongoose.Document) => {
+            return docToJSON(d);
           })
           res.status(201).send({
               success: true,
@@ -49,12 +50,29 @@ function extra (app: Express) {
       }
   });
 
-  app.get('/data/nuggets', async(req:any, res) => {
-      const doc = await IndexedObjectModel.find();
+  app.get('/data/markets', async(req:any, res) => {
+      const doc = await MarketObjectModel.find();
       try {
           const jdoc = doc.map((d) => {
-              const jdoc = IndexedObject.fromMongooseDoc(d);
-              return jdoc.toJSON();
+              return docToJSON(d);
+          });
+          console.log(jdoc);
+          res.status(201).send({
+              success: true,
+              data: jdoc,
+          });
+      } catch (e) {
+          console.log(e);
+          res.status(500).send()
+      }
+  });
+
+
+  app.get('/data/nuggets', async(req:any, res) => {
+      const doc = await NuggetObjectModel.find();
+      try {
+          const jdoc = doc.map((d) => {
+              return docToJSON(d);
           });
           console.log(jdoc);
           res.status(201).send({
@@ -134,7 +152,7 @@ async function eventCallback(arg: TxWitness, data: BigUint64Array) {
                 {
                 console.log("indexed object event:");
                 let obj = IndexedObject.fromEvent(eventData);
-                let doc = await IndexedObjectModel.findOneAndUpdate({index: obj.index}, obj.toObject(), {upsert: true});
+                let doc = await obj.storeRelatedObject();
                 console.log("indexed object", doc);
             }
             break;

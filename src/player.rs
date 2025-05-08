@@ -3,6 +3,7 @@ use crate::StorageData;
 use core::slice::IterMut;
 use serde::Serialize;
 use crate::error::*;
+use zkwasm_rest_convention::WithBalance;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct PlayerData {
@@ -25,9 +26,9 @@ impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         let balance = *u64data.next().unwrap();
         let inventory_size = *u64data.next().unwrap();
-        let length = *u64data.next().unwrap();
-        let mut inventory = Vec::with_capacity(length as usize);
-        for _ in 0..length {
+        let ilength = *u64data.next().unwrap();
+        let mut inventory = Vec::with_capacity(ilength as usize);
+        for _ in 0..ilength {
             inventory.push(*u64data.next().unwrap());
         }
         PlayerData {
@@ -61,11 +62,6 @@ impl Owner for GamePlayer {
     fn get(pkey: &[u64; 4]) -> Option<Self> {
         Self::get_from_pid(&Self::pkey_to_pid(pkey))
     }
-}
-
-pub trait WithBalance {
-    fn cost_balance(&mut self, amount: u64) -> Result<(), u32>;
-    fn inc_balance(&mut self, amount: u64);
 }
 
 impl WithBalance for PlayerData {

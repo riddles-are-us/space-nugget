@@ -1,19 +1,13 @@
 use std::{ops::BitXor, slice::IterMut};
 use serde::Serialize;
 use crate::player::PlayerData;
-use crate::player::WithBalance;
-use zkwasm_rest_abi::Player; 
 use zkwasm_rest_abi::StorageData;
+use zkwasm_rest_convention::BidInfo;
 use zkwasm_rest_convention::IndexedObject;
-use crate::error::ERROR_BID_PRICE_INSUFFICIENT;
-
-use crate::error::ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED;
-
-#[derive(Clone, Serialize, Default, Copy)]
-pub struct BidInfo {
-    pub bidprice: u64,
-    pub bidder: [u64; 2],
-}
+use zkwasm_rest_convention::MarketInfo;
+use zkwasm_rest_convention::BidObject;
+use std::marker::PhantomData;
+use crate::error::*;
 
 #[derive(Clone, Serialize, Default, Copy)]
 pub struct NuggetInfo {
@@ -22,8 +16,7 @@ pub struct NuggetInfo {
     pub cycle: u64,
     pub feature: u64,
     pub sysprice: u64,
-    pub askprice: u64,
-    pub bid: Option<BidInfo>,
+    pub marketid: u64, // the associated makret id for this object. None if zero
 }
 
 impl StorageData for NuggetInfo {
@@ -33,23 +26,14 @@ impl StorageData for NuggetInfo {
         let cycle = *u64data.next().unwrap();
         let feature = *u64data.next().unwrap();
         let sysprice = *u64data.next().unwrap();
-        let askprice = *u64data.next().unwrap();
-        let bid = *u64data.next().unwrap();
-        let mut bidder = None;
-        if bid != 0 {
-            bidder =  Some(BidInfo {
-                bidprice: bid,
-                bidder: [*u64data.next().unwrap(), *u64data.next().unwrap()]
-            })
-        }
+        let marketid= *u64data.next().unwrap();
         NuggetInfo {
             id,
             attributes,
             cycle,
             feature,
             sysprice,
-            askprice,
-            bid: bidder,
+            marketid,
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
@@ -58,17 +42,20 @@ impl StorageData for NuggetInfo {
         data.push(self.cycle);
         data.push(self.feature);
         data.push(self.sysprice);
-        data.push(self.askprice);
-        match self.bid {
-            None => data.push(0),
-            Some(b) => {
-                data.push(b.bidprice);
-                data.push(b.bidder[0]);
-                data.push(b.bidder[1]);
-            },
-        }
+        data.push(self.marketid);
     }
 }
+
+const EXPLORE_WEIGHT:[u8; 64] = [
+    2,2,2,2,2,2,1,0,
+    3,3,3,3,3,2,1,0,
+    4,4,4,4,3,2,1,0,
+    5,5,5,4,3,2,1,0,
+    6,6,5,4,3,2,1,0,
+    7,6,5,4,3,2,1,0,
+    8,7,6,5,4,3,2,0,
+    9,8,7,6,5,4,3,2,
+];
 
 impl NuggetInfo {
     pub fn new(id: u64, rand: u64) -> Self {
@@ -79,16 +66,15 @@ impl NuggetInfo {
            attributes: [c[0].bitxor(c[1]) + 1, 0, 0, 0, 0, 0, 0, 0],
            feature: rand % 8,
            sysprice: 0,
-           askprice: 0,
-           bid: None
+           marketid: 0,
        }
     }
 
     pub fn explore(&mut self, rand: u64) -> Result<(), u32> {
-        let r = rand.to_le_bytes();
+        let r = EXPLORE_WEIGHT[(rand % 64) as usize ];
         for c in self.attributes.iter_mut() {
             if *c == 0 {
-                *c = (r[0].bitxor(r[1]) % 9) + 1;
+                *c = r + 1;
                 return Ok(())
             }
         }
@@ -118,40 +104,15 @@ impl NuggetInfo {
     }
 }
 
-pub trait BidObject<PlayerData: StorageData + Default + WithBalance> {
-    const INSUFF: u32;
-    fn get_bidder(&self) -> Option<BidInfo>;
-    fn set_bidder(&mut self, bidder: Option<BidInfo>);
-    fn clear_bidder(&mut self) -> Option<Player<PlayerData>> {
-         let player = self.get_bidder().map(|c| {
-            let mut player = Player::<PlayerData>::get_from_pid(&c.bidder).unwrap();
-            player.data.inc_balance(c.bidprice);
-            player
-        });
-        self.set_bidder(None); 
-        player
-    }
-    fn replace_bidder(&mut self, player: &mut Player<PlayerData>, amount: u64) -> Result<Option<Player<PlayerData>>, u32> {
-        self.get_bidder().map_or(Ok(()), |x| {
-            let bidprice = x.bidprice;
-            if bidprice >= amount {
-                Err(Self::INSUFF)
-            } else {
-                Ok(())
-            }
-        })?;
-        let old_bidder = self.clear_bidder();
-        self.set_bidder(Some (BidInfo {
-            bidprice: amount,
-            bidder: player.player_id.clone(),
-        }));
-        player.data.cost_balance(amount)?;
-        Ok(old_bidder)
-    }
+impl IndexedObject<NuggetInfo> for NuggetInfo {
+    const PREFIX: u64 = 0x1ee1;
+    const POSTFIX: u64 = 0xfee1;
+    const EVENT_NAME: u64 = 0x02;
 }
 
-impl BidObject<PlayerData> for NuggetInfo {
+impl BidObject<PlayerData> for MarketInfo<NuggetInfo, PlayerData> {
     const INSUFF:u32 = ERROR_BID_PRICE_INSUFFICIENT;
+    const NOBID: u32 = ERROR_NO_BIDDER;
     fn get_bidder(&self) -> Option<BidInfo> {
         self.bid
     }
@@ -159,10 +120,46 @@ impl BidObject<PlayerData> for NuggetInfo {
     fn set_bidder(&mut self, bidder: Option<BidInfo>) {
         self.bid = bidder;
     }
+
+    fn get_owner(&self) -> [u64; 2] {
+        self.owner
+    }
+
+    fn set_owner(&mut self, pid: [u64; 2]) { 
+        self.owner = pid 
+    }
+
 }
 
-impl IndexedObject<NuggetInfo> for NuggetInfo {
-    const PREFIX: u64 = 0x1ee1;
-    const POSTFIX: u64 = 0xfee1;
+pub struct MarketNugget (pub MarketInfo<NuggetInfo, PlayerData>);
+
+impl MarketNugget {
+    pub fn new(marketid: u64, askprice: u64, settleinfo: u64, bid: Option<BidInfo>, object: NuggetInfo, owner: [u64; 2]) -> Self {
+        MarketNugget (MarketInfo {
+            marketid,
+            askprice,
+            settleinfo,
+            bid,
+            object,
+            owner,
+            user: PhantomData
+        })
+    }
+}
+
+impl StorageData for MarketNugget {
+    fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        MarketNugget (MarketInfo::<NuggetInfo, PlayerData>::from_data(u64data))
+    }
+    fn to_data(&self, data: &mut Vec<u64>) {
+        self.0.to_data(data)
+    }
+}
+
+
+
+impl IndexedObject<MarketNugget> for MarketNugget {
+    const PREFIX: u64 = 0x1ee2;
+    const POSTFIX: u64 = 0xfee2;
     const EVENT_NAME: u64 = 0x02;
 }

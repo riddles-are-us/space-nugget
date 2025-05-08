@@ -1,4 +1,54 @@
 import mongoose from 'mongoose';
+import { Market } from 'zkwasm-ts-server';
+
+(BigInt.prototype as any).toJSON = function () {
+          return this.toString();
+};
+
+interface Nugget {
+  id: bigint;
+  attributes: bigint;
+  cycle: bigint;
+  feature: bigint;
+  sysprice: bigint;
+  marketid: bigint;
+}
+
+class NuggetDecoder implements Market.Decodable<Nugget> {
+  constructor() {
+  }
+  fromData(u64data: bigint[]): Nugget {
+    const id: bigint = u64data.shift()!;
+    const attributes: bigint = u64data.shift()!;
+    const cycle: bigint = u64data.shift()!;
+    const feature: bigint = u64data.shift()!;
+    const sysprice: bigint = u64data.shift()!;
+    const marketid: bigint = u64data.shift()!;
+    return {
+        id,
+        attributes,
+        cycle,
+        feature,
+        sysprice,
+        marketid,
+    }
+  }
+}
+
+
+const NUGGET_INFO = 1;
+const MARKET_INFO = 2;
+
+export function docToJSON(doc: mongoose.Document) {
+    console.log("doc...", doc);
+    const obj = doc.toObject({
+        transform: (_, ret:any) => {
+            delete ret._id;
+            return ret;
+        }
+    });
+    return obj;
+}
 
 export class IndexedObject {
     // token idx
@@ -11,70 +61,51 @@ export class IndexedObject {
         this.data = data;
     }
 
-    static fromMongooseDoc(doc: mongoose.Document): IndexedObject {
-        const obj = doc.toObject({
-            transform: (doc, ret) => {
-                delete ret._id;
-                return ret;
-            }
-        });
-        return new IndexedObject(obj.index, obj.data);
-    }
-
-    toMongooseDoc(): mongoose.Document {
-        return new IndexedObjectModel(this.toObject());
-    }
-
-    toObject(): { index: number, data: string[], bidder: string[] | null} {
-        let bidder = null;
-        if (this.data[6] != 0n) {
-          bidder = [this.data[7].toString(), this.data[8].toString()];
+    toObject() {
+        let decoder = new NuggetDecoder();
+        if (this.index == NUGGET_INFO) {
+            return decoder.fromData(this.data);
+        } else if (this.index == MARKET_INFO) {
+            return Market.fromData(this.data, decoder);
+        } else {
+            console.log("fatal, unexpected object index");
+            process.exit();
         }
-        return {
-            bidder: bidder,
-            index: this.index,
-            data: this.data.map((x) => x.toString()),
-        };
     }
 
     toJSON() {
-      const iobj = this.toObject();
-      let bidder = null;
-      if (iobj.bidder != null) {
-        bidder = {
-          bidder: [iobj.bidder[0], iobj.bidder[1]],
-          bidprice: Number(iobj.data[6]),
-        }
-      }
-
-      return  {
-        id: Number(iobj.index),
-        attributes: iobj.data[1].toString(),
-        cycle: Number(iobj.data[2]),
-        feature: Number(iobj.data[3]),
-        sysprice: Number(iobj.data[4]),
-        askprice: Number(iobj.data[5]),
-        bid: bidder,
-      }
+      return JSON.stringify(this.toObject());
     }
 
     static fromEvent(data: BigUint64Array): IndexedObject {
         return new IndexedObject(Number(data[0]),  Array.from(data.slice(1)))
     }
+
+    async storeRelatedObject() {
+        let obj = this.toObject() as any;
+        if (this.index == NUGGET_INFO) {
+            let doc = await NuggetObjectModel.findOneAndUpdate({id: obj.id}, obj, {upsert: true});
+            return doc;
+        } else if (this.index == MARKET_INFO) {
+            let doc = await MarketObjectModel.findOneAndUpdate({marketid: obj.marketid}, obj, {upsert: true});
+            return doc;
+        }
+
+    }
 }
 
 // Define the schema for the Token model
-const indexedObjectSchema = new mongoose.Schema({
-    index: { type: Number, required: true, unique: true},
-    bidder:  {
-      type: [String],
-      required: false,
-    },
-    data: {
-        type: [String],
-        required: true,
-    },
+const NuggetObjectSchema = new mongoose.Schema({
+    id: { type: BigInt, required: true, unique: true},
+    attributes: {type: BigInt, required: true},
+    cycle: {type: BigInt, required: true},
+    feature: {type: BigInt, required: true},
+    sysprice: {type: BigInt, required: true},
+    marketid: {type: BigInt, required: true},
 });
 
+NuggetObjectSchema.pre('init', Market.uint64FetchPlugin);
+
 // Create the Token model
-export const IndexedObjectModel = mongoose.model('IndexedObject', indexedObjectSchema);
+export const MarketObjectModel = mongoose.model('MarketObject', Market.marketObjectSchema);
+export const NuggetObjectModel = mongoose.model('NuggetObject', NuggetObjectSchema);
