@@ -14,6 +14,8 @@ pub struct Config {
     name: [&'static str; 1],
 }
 
+pub const MARKET_DEAL_DELAY: u64 = 24 * 60 * 60 / 5;
+
 lazy_static::lazy_static! {
     pub static ref CONFIG: Config = Config {
         actions: ["nugget"],

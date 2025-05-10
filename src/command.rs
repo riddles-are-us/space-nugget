@@ -5,6 +5,7 @@ use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use zkwasm_rest_convention::WithBalance;
 use zkwasm_rest_convention::BidObject;
+use crate::config::MARKET_DEAL_DELAY;
 use crate::settlement::SettlementInfo;
 use crate::player::GamePlayer;
 use crate::state::GLOBAL_STATE;
@@ -90,7 +91,7 @@ const NUGGET_INFO:u64 = 1;
 const MARKET_INFO:u64 = 2;
 
 impl CommandHandler for Activity {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], _counter: u64) -> Result<(), u32> {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], counter: u64) -> Result<(), u32> {
         let mut player = GamePlayer::get_from_pid(pid);
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
@@ -184,17 +185,24 @@ impl CommandHandler for Activity {
                                 Err(INVALID_MARKET_INDEX)
                             },
                             Some(mut market)=> {
-                                let mut bidder = market.data.0.deal()?;
-                                let mut nugget = NuggetInfo::get_object(market.data.0.object.id).unwrap();
-                                market.data.0.settleinfo = 2;
-                                nugget.data.marketid = 0;
-                                bidder.data.inventory.push(nugget.data.id);
-                                nugget.store();
-                                market.store();
-                                bidder.store();
-                                MarketNugget::emit_event(MARKET_INFO, &market.data);
-                                NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
-                                Ok(())
+                                let owner = market.data.0.get_owner();
+                                // calculate the time that has passed
+                                let delay = counter - (market.data.0.settleinfo >> 16);
+                                if player.player_id == owner || delay > MARKET_DEAL_DELAY {
+                                    let mut bidder = market.data.0.deal()?;
+                                    let mut nugget = NuggetInfo::get_object(market.data.0.object.id).unwrap();
+                                    market.data.0.settleinfo = 2;
+                                    nugget.data.marketid = 0;
+                                    bidder.data.inventory.push(nugget.data.id);
+                                    nugget.store();
+                                    market.store();
+                                    bidder.store();
+                                    MarketNugget::emit_event(MARKET_INFO, &market.data);
+                                    NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
+                                    Ok(())
+                                } else {
+                                    Err(INVALID_MARKET_INDEX)
+                                }
                             }
                         }
                     },
@@ -214,7 +222,7 @@ impl CommandHandler for Activity {
                                     market.store();
                                     NuggetInfo::emit_event(NUGGET_INFO, &n.data);
                                 } else {
-                                    market.data.0.settleinfo = 1;
+                                    market.data.0.settleinfo = 1 + (counter << 16);
                                     market.store();
                                 }
                                 lastbidder.map(|p| p.store());

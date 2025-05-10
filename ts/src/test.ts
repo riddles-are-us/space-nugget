@@ -80,9 +80,9 @@ async function main() {
     console.log(e);
   }
 
-  console.log("Start run query markets...");
+  console.log("Start run query my bids...", pubkey[0], pubkey[1]);
   try {
-    let data:any = await player.rpc.queryData(`markets`);
+    let data:any = await player.rpc.queryData(`bid/${pubkey[1].toString()}/${pubkey[2].toString()}`);
     console.log(data);
   } catch(e) {
     console.log(e);
