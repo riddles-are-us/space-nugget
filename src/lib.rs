@@ -8,6 +8,7 @@ pub mod player;
 pub mod settlement;
 pub mod state;
 pub mod nugget;
+pub mod market;
 
 use crate::config::Config;
 use crate::state::{GlobalState, Transaction};

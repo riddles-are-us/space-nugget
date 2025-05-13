@@ -1,15 +1,17 @@
-use crate::nugget::MarketNugget;
+use crate::market::MarketNugget;
+use crate::market::bid;
+use crate::market::settle;
+use crate::market::list;
 use crate::nugget::NuggetInfo;
 use zkwasm_rest_convention::IndexedObject;
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::WithdrawInfo;
 use zkwasm_rest_convention::WithBalance;
-use zkwasm_rest_convention::BidObject;
-use crate::config::MARKET_DEAL_DELAY;
 use crate::settlement::SettlementInfo;
 use crate::player::GamePlayer;
 use crate::state::GLOBAL_STATE;
 use crate::error::*;
+use crate::config::{NUGGET_INFO, MARKET_INFO};
 
 #[derive (Clone)]
 pub enum Command {
@@ -87,8 +89,6 @@ pub enum Activity {
     List(u64, u64),
 }
 
-const NUGGET_INFO:u64 = 1;
-const MARKET_INFO:u64 = 2;
 
 impl CommandHandler for Activity {
     fn handle(&self, pid: &[u64; 2], nonce: u64, rand: &[u64; 4], counter: u64) -> Result<(), u32> {
@@ -135,34 +135,6 @@ impl CommandHandler for Activity {
                         }
                     },
 
-                    Activity::List(index, askprice) => {
-                        if player.data.inventory.len() <= (*index) as usize {
-                            Err(INVALID_NUGGET_INDEX)
-                        } else {
-                            let nuggetid = player.data.inventory[*index as usize];
-                            let mut nugget = NuggetInfo::get_object(nuggetid).unwrap();
-                            if nugget.data.marketid != 0 {
-                                Err(NUGGET_IN_USE)
-                            } else {
-                                player.data.inventory.swap_remove(*index as usize); // remove
-                                player.data.cost_balance(500)?;
-                                let mut global = GLOBAL_STATE.0.borrow_mut();
-                                // we should not fail after this point
-                                let market_id = global.total;
-                                global.total += 1;
-                                nugget.data.marketid = market_id;
-                                let market_nugget = MarketNugget::new(market_id, *askprice, 0, None, nugget.data.clone(), player.player_id);
-                                let marketinfo = MarketNugget::new_object(market_nugget, market_id);
-                                nugget.store();
-                                marketinfo.store();
-                                player.store();
-                                NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
-                                MarketNugget::emit_event(MARKET_INFO, &marketinfo.data);
-                                Ok(())
-                            }
-                        }
-                    },
-
 
                     Activity::Recycle(index) => {
                         if player.data.inventory.len() <= (*index) as usize {
@@ -178,60 +150,25 @@ impl CommandHandler for Activity {
                             Ok(())
                         }
                     },
-                    Activity::Sell(index) => {
-                        let market_info = MarketNugget::get_object(*index);
-                        match market_info {
-                            None => {
-                                Err(INVALID_MARKET_INDEX)
-                            },
-                            Some(mut market)=> {
-                                let owner = market.data.0.get_owner();
-                                // calculate the time that has passed
-                                let delay = counter - (market.data.0.settleinfo >> 16);
-                                if player.player_id == owner || delay > MARKET_DEAL_DELAY {
-                                    let mut bidder = market.data.0.deal()?;
-                                    let mut nugget = NuggetInfo::get_object(market.data.0.object.id).unwrap();
-                                    market.data.0.settleinfo = 2;
-                                    nugget.data.marketid = 0;
-                                    bidder.data.inventory.push(nugget.data.id);
-                                    nugget.store();
-                                    market.store();
-                                    bidder.store();
-                                    MarketNugget::emit_event(MARKET_INFO, &market.data);
-                                    NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
-                                    Ok(())
-                                } else {
-                                    Err(INVALID_MARKET_INDEX)
-                                }
-                            }
+
+                    Activity::List(index, askprice) => {
+                        if player.data.inventory.len() <= (*index) as usize {
+                            Err(INVALID_NUGGET_INDEX)
+                        } else {
+                            let nuggetid = player.data.inventory[*index as usize];
+                            list(player, nuggetid, *askprice)?;
+                            player.data.inventory.swap_remove(*index as usize); // remove
+                            Ok(())
                         }
                     },
 
+
+                    Activity::Sell(index) => {
+                        settle(player, *index, counter)
+                    },
+
                     Activity::Bid(mid, price) => {
-                        let market_info = MarketNugget::get_object(*mid);
-                        match market_info {
-                            Some(mut market) => {
-                                let lastbidder = market.data.0.replace_bidder(player, *price)?;
-                                if *price >= market.data.0.askprice {
-                                    market.data.0.settleinfo = 2;
-                                    market.data.0.deal()?;
-                                    player.data.inventory.push(market.data.0.object.id);
-                                    let mut n = NuggetInfo::get_object(market.data.0.object.id).unwrap();
-                                    n.data.marketid = 0;
-                                    n.store();
-                                    market.store();
-                                    NuggetInfo::emit_event(NUGGET_INFO, &n.data);
-                                } else {
-                                    market.data.0.settleinfo = 1 + (counter << 16);
-                                    market.store();
-                                }
-                                lastbidder.map(|p| p.store());
-                                player.store();
-                                MarketNugget::emit_event(MARKET_INFO, &market.data);
-                                Ok(())
-                            },
-                            None => Err(INVALID_NUGGET_INDEX)
-                        }
+                        bid(player, *mid, *price, counter)
                     }
                 }
             }

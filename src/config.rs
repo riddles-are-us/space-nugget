@@ -35,3 +35,6 @@ impl Config {
         false
     }
 }
+
+pub const NUGGET_INFO:u64 = 1;
+pub const MARKET_INFO:u64 = 2;

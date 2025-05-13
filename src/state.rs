@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::cell::RefCell;
 use zkwasm_rest_abi::MERKLE_MAP;
 use zkwasm_rust_sdk::require;
+use zkwasm_rest_abi::enforce;
 use crate::command::Command;
 use crate::command::Activity;
 use crate::command::Deposit;
@@ -34,6 +35,7 @@ const TICK: u64 = 0;
 const INSTALL_PLAYER: u64 = 1;
 const WITHDRAW: u64 = 2;
 const DEPOSIT: u64 = 3;
+
 const EXPLORE_NUGGET: u64 = 4;
 const SELL_NUGGET: u64 = 5;
 const BID_NUGGET: u64 = 6;
@@ -147,8 +149,9 @@ impl Transaction {
                 data: [params[2], params[3], params[4]]
             })
         } else if command == DEPOSIT {
+            enforce(params[3] == 0, "check deposit index"); // only token index 0 is supported
             Command::Deposit (Deposit {
-                data: [params[2], params[3], params[4]]
+                data: [params[1], params[2], params[4]]
             })
         } else if command == INSTALL_PLAYER {
             Command::InstallPlayer

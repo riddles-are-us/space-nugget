@@ -50,6 +50,27 @@ function extra (app: Express) {
       }
   });
 
+  app.get('/data/sell/:pid1/:pid2', async(req:any, res) => {
+      try {
+          let pid1 = req.params.pid1;
+          let pid2 = req.params.pid2;
+          let doc = await MarketObjectModel.find(
+              {"owner": [pid1, pid2]},
+          );
+          let data = doc.map((d: mongoose.Document) => {
+            return docToJSON(d);
+          })
+          res.status(201).send({
+              success: true,
+              data: data,
+          });
+      } catch (e) {
+          console.log(e);
+          res.status(500).send()
+      }
+  });
+
+
   app.get('/data/markets', async(req:any, res) => {
       const doc = await MarketObjectModel.find();
       try {

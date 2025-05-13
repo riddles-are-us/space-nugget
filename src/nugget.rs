@@ -1,12 +1,7 @@
 use std::{ops::BitXor, slice::IterMut};
 use serde::Serialize;
-use crate::player::PlayerData;
 use zkwasm_rest_abi::StorageData;
-use zkwasm_rest_convention::BidInfo;
 use zkwasm_rest_convention::IndexedObject;
-use zkwasm_rest_convention::MarketInfo;
-use zkwasm_rest_convention::BidObject;
-use std::marker::PhantomData;
 use crate::error::*;
 
 #[derive(Clone, Serialize, Default, Copy)]
@@ -110,56 +105,4 @@ impl IndexedObject<NuggetInfo> for NuggetInfo {
     const EVENT_NAME: u64 = 0x02;
 }
 
-impl BidObject<PlayerData> for MarketInfo<NuggetInfo, PlayerData> {
-    const INSUFF:u32 = ERROR_BID_PRICE_INSUFFICIENT;
-    const NOBID: u32 = ERROR_NO_BIDDER;
-    fn get_bidder(&self) -> Option<BidInfo> {
-        self.bid
-    }
 
-    fn set_bidder(&mut self, bidder: Option<BidInfo>) {
-        self.bid = bidder;
-    }
-
-    fn get_owner(&self) -> [u64; 2] {
-        self.owner
-    }
-
-    fn set_owner(&mut self, pid: [u64; 2]) { 
-        self.owner = pid 
-    }
-
-}
-
-pub struct MarketNugget (pub MarketInfo<NuggetInfo, PlayerData>);
-
-impl MarketNugget {
-    pub fn new(marketid: u64, askprice: u64, settleinfo: u64, bid: Option<BidInfo>, object: NuggetInfo, owner: [u64; 2]) -> Self {
-        MarketNugget (MarketInfo {
-            marketid,
-            askprice,
-            settleinfo,
-            bid,
-            object,
-            owner,
-            user: PhantomData
-        })
-    }
-}
-
-impl StorageData for MarketNugget {
-    fn from_data(u64data: &mut IterMut<u64>) -> Self {
-        MarketNugget (MarketInfo::<NuggetInfo, PlayerData>::from_data(u64data))
-    }
-    fn to_data(&self, data: &mut Vec<u64>) {
-        self.0.to_data(data)
-    }
-}
-
-
-
-impl IndexedObject<MarketNugget> for MarketNugget {
-    const PREFIX: u64 = 0x1ee2;
-    const POSTFIX: u64 = 0xfee2;
-    const EVENT_NAME: u64 = 0x02;
-}
