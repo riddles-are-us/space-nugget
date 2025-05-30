@@ -12,5 +12,6 @@ pub const NUGGET_IN_USE: u32 = 11;
 pub const ERROR_NO_BIDDER: u32 = 12;
 pub const INVALID_MARKET_INDEX: u32 = 13;
 pub const ERROR_NOT_LISTED: u32 = 14;
+pub const INVALID_BIDDER: u32 = 15;
 
 

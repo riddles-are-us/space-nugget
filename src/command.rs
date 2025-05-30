@@ -188,6 +188,7 @@ pub fn decode_error(e: u32) -> &'static str {
         ERROR_BID_PRICE_INSUFFICIENT => "BidPriceInsufficient",
         ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED => "NuggetAttributeAllExplored",
         INVALID_MARKET_INDEX => "InvalidMarketIndex",
+        INVALID_BIDDER => "InvalidBidder",
         ERROR_NO_BIDDER => "NoBidderForThisItem",
         ERROR_NOT_LISTED => "NuggetNotListed",
         _ => "Unknown",

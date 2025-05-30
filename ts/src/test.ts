@@ -4,9 +4,11 @@ import { LeHexBN, query, ZKWasmAppRpc} from "zkwasm-ts-server";
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
 let account = "1234";
+let account_bid = "5678";
 
 const rpc:any = new ZKWasmAppRpc("http://127.0.0.1:3000");
 let player = new Player(account, rpc, commandSpec.DEPOSIT.id, commandSpec.WITHDRAW.id);
+let player_bid = new Player(account_bid, rpc, commandSpec.DEPOSIT.id, commandSpec.WITHDRAW.id);
 
 // Function to pause execution for a given duration
 function delay(ms: number) {
@@ -22,6 +24,7 @@ async function main() {
 
   console.log("Start run CREATE_PLAYER...");
   await player.runCommand(commandSpec.INSTALL_PLAYER.id, 0n, []);
+  await player_bid.runCommand(commandSpec.INSTALL_PLAYER.id, 0n, []);
 
   let g = await player.getState();
   console.log("state.", g);
@@ -64,8 +67,8 @@ async function main() {
     marketid = data.data[0].marketid;
     console.log("Start run BID_NUGGET ...");
     console.log(JSON.stringify(data.data[0]));
-    nonce = await player.getNonce();
-    await player.runCommand(commandSpec.BID_NUGGET.id, nonce, [BigInt(marketid), 8n]);
+    nonce = await player_bid.getNonce();
+    await player_bid.runCommand(commandSpec.BID_NUGGET.id, nonce, [BigInt(marketid), 8n]);
   } catch(e) {
     console.log(e);
   }
