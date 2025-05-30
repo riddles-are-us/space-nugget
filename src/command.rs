@@ -99,7 +99,7 @@ impl CommandHandler for Activity {
                 player.check_and_inc_nonce(nonce);
                 match self {
                     Activity::Create => {
-                        if player.data.inventory.len() > player.data.inventory_size as usize {
+                        if player.data.inventory.len() >= player.data.inventory_size as usize {
                             Err(PLAYER_NOT_ENOUGH_INVENTORY)
                         } else {
                             player.data.cost_balance(5000)?;
