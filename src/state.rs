@@ -21,14 +21,12 @@ pub struct GlobalState {
     pub total: u64,
     pub counter: u64,
     pub txsize: u64,
-    pub airdrop: u64,
 }
 
 #[derive(Serialize)]
 pub struct QueryState {
     total: u64,
     counter: u64,
-    airdrop: u64,
 }
 
 const TICK: u64 = 0;
@@ -51,15 +49,13 @@ impl GlobalState {
             total: 0,
             counter: 0,
             txsize: 0,
-            airdrop: 10000000
         }
     }
 
     pub fn snapshot() -> String {
         let total = GLOBAL_STATE.0.borrow().total;
         let counter = GLOBAL_STATE.0.borrow().counter;
-        let airdrop = GLOBAL_STATE.0.borrow().airdrop;
-        serde_json::to_string(&QueryState { counter, total, airdrop }).unwrap()
+        serde_json::to_string(&QueryState { counter, total}).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
@@ -72,7 +68,7 @@ impl GlobalState {
         let counter = state.counter;
         let txsize = state.txsize;
         let withdraw_size = SettlementInfo::settlement_size();
-        if counter % 600 == 0 || txsize >= 10 || withdraw_size > 40 {
+        if counter % 600 == 0 || txsize >= 40 || withdraw_size > 40 {
             state.txsize = 0;
             return true;
         } else {
@@ -91,7 +87,6 @@ impl GlobalState {
     pub fn store_into_kvpair(&self) {
         let mut v = vec![];
         v.push(self.counter);
-        v.push(self.airdrop);
         v.push(self.total);
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
@@ -103,10 +98,8 @@ impl GlobalState {
         if !data.is_empty() {
             let mut u64data = data.iter_mut();
             let counter = *u64data.next().unwrap();
-            let airdrop = *u64data.next().unwrap();
             let total = *u64data.next().unwrap();
             self.counter = counter;
-            self.airdrop = airdrop;
             self.total = total;
         }
     }
@@ -219,11 +212,12 @@ impl Transaction {
                     .map_or_else(|e| e, |_| 0)
             },
         };
-        match self.command {
-            Command::Tick => (),
-            _ => {
-                self.inc_tx_number();
-                self.tick();
+        if e == 0 {
+            match self.command {
+                Command::Tick => (),
+                _ => {
+                    self.inc_tx_number();
+                }
             }
         }
         let txsize = GLOBAL_STATE.0.borrow().txsize;
