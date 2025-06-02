@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import { Market } from 'zkwasm-ts-server';
+import { Market, ObjectEvent } from 'zkwasm-ts-server';
 
 (BigInt.prototype as any).toJSON = function () {
-          return this.toString();
+    return BigInt.asUintN(64, this).toString();
 };
 
 interface Nugget {
@@ -14,7 +14,7 @@ interface Nugget {
   marketid: bigint;
 }
 
-class NuggetDecoder implements Market.Decodable<Nugget> {
+class NuggetDecoder implements ObjectEvent.Decodable<Nugget> {
   constructor() {
   }
   fromData(u64data: bigint[]): Nugget {
@@ -104,8 +104,10 @@ const NuggetObjectSchema = new mongoose.Schema({
     marketid: {type: BigInt, required: true},
 });
 
-NuggetObjectSchema.pre('init', Market.uint64FetchPlugin);
+const MarketObjectSchema = Market.createMarketSchema(NuggetObjectSchema);
+
+NuggetObjectSchema.pre('init', ObjectEvent.uint64FetchPlugin);
 
 // Create the Token model
-export const MarketObjectModel = mongoose.model('MarketObject', Market.marketObjectSchema);
+export const MarketObjectModel = mongoose.model('MarketObject', MarketObjectSchema);
 export const NuggetObjectModel = mongoose.model('NuggetObject', NuggetObjectSchema);
