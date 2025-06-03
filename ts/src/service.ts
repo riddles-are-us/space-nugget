@@ -35,7 +35,10 @@ function extra (app: Express) {
           let pid1 = req.params.pid1;
           let pid2 = req.params.pid2;
           let doc = await MarketObjectModel.find(
-              {"bidder.bidder": [pid1, pid2]},
+              {
+                settleinfo: { $ne: BigInt(2) },
+                "bidder.bidder": [pid1, pid2]
+              },
           );
           let data = doc.map((d: mongoose.Document) => {
             return docToJSON(d);
@@ -55,7 +58,10 @@ function extra (app: Express) {
           let pid1 = req.params.pid1;
           let pid2 = req.params.pid2;
           let doc = await MarketObjectModel.find(
-              {"owner": [pid1, pid2]},
+            {
+              settleinfo: { $ne: BigInt(2) },
+              "bidder.bidder": [pid1, pid2]
+            },
           );
           let data = doc.map((d: mongoose.Document) => {
             return docToJSON(d);
@@ -72,7 +78,7 @@ function extra (app: Express) {
 
 
   app.get('/data/markets', async(req:any, res) => {
-      const doc = await MarketObjectModel.find();
+    const doc = await MarketObjectModel.find({ settleinfo: { $ne: BigInt(2) } });
       try {
           const jdoc = doc.map((d) => {
               return docToJSON(d);
