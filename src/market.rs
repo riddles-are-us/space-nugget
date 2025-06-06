@@ -78,12 +78,13 @@ pub fn bid(player: &mut Player<PlayerData>, mid: u64, price: u64, counter: u64) 
             } else {
                 if price >= market.data.0.askprice {
                     market.data.0.settleinfo = 2;
-                    market.data.0.deal()?;
+                    let owner = market.data.0.deal()?;
                     player.data.inventory.push(market.data.0.object.id);
                     let mut n = NuggetInfo::get_object(market.data.0.object.id).unwrap();
                     n.data.marketid = 0;
                     n.store();
                     market.store();
+                    owner.store();
                     NuggetInfo::emit_event(NUGGET_INFO, &n.data);
                 } else {
                     market.data.0.settleinfo = 1 + (counter << 16);
