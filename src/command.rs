@@ -158,6 +158,7 @@ impl CommandHandler for Activity {
                             let nuggetid = player.data.inventory[*index as usize];
                             list(player, nuggetid, *askprice)?;
                             player.data.inventory.swap_remove(*index as usize); // remove
+                            player.store();
                             Ok(())
                         }
                     },
