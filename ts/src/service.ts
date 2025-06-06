@@ -146,9 +146,7 @@ function extra(app: Express) {
         rawIds = [rawIds]; // wrap single value into an array
       }
       const ids = rawIds.map((id: string) => BigInt(id));
-      const doc = await (ids.length > 0
-        ? NuggetObjectModel.find({ id: { $in: ids } })
-        : NuggetObjectModel.find());
+      const doc = await NuggetObjectModel.find({ id: { $in: ids } });
 
       const jdoc = doc.map((d) => {
         return docToJSON(d);
