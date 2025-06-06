@@ -115,14 +115,17 @@ pub fn settle(player: &mut Player<PlayerData>, mid: u64, counter: u64) -> Result
                 // calculate the time that has passed
                 let delay = counter - (market.data.0.settleinfo >> 16);
                 if player.player_id == owner || delay > MARKET_DEAL_DELAY {
-                    let mut bidder = market.data.0.deal()?;
+                    let owner = market.data.0.deal()?;
                     let mut nugget = NuggetInfo::get_object(market.data.0.object.id).unwrap();
                     market.data.0.settleinfo = 2;
                     nugget.data.marketid = 0;
+                    let bidder_id = market.data.0.get_bidder().unwrap().bidder;
+                    let mut bidder = Player::<PlayerData>::get_from_pid(&bidder_id).unwrap();
                     bidder.data.inventory.push(nugget.data.id);
                     nugget.store();
                     market.store();
                     bidder.store();
+                    owner.store();
                     MarketNugget::emit_event(MARKET_INFO, &market.data);
                     NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
                     Ok(())
