@@ -104,7 +104,18 @@ const NuggetObjectSchema = new mongoose.Schema({
     marketid: {type: BigInt, required: true},
 });
 
-const MarketObjectSchema = Market.createMarketSchema(NuggetObjectSchema);
+// Define the schema for the Token model
+const InnerNuggetObjectSchema = new mongoose.Schema({
+    id: { type: BigInt, required: true},
+    attributes: {type: BigInt, required: true},
+    cycle: {type: BigInt, required: true},
+    feature: {type: BigInt, required: true},
+    sysprice: {type: BigInt, required: true},
+    marketid: {type: BigInt, required: true},
+});
+
+
+const MarketObjectSchema = Market.createMarketSchema(InnerNuggetObjectSchema);
 
 NuggetObjectSchema.pre('init', ObjectEvent.uint64FetchPlugin);
 
