@@ -92,7 +92,7 @@ impl NuggetInfo {
             if c == 0 {
                 p = p + 2;
             } else {
-                p = p + ((c as u64 - 1) % 10)
+                p = p + ((c as u64 - 1) % 64)
             }
         }
         for i in (plus_pos + 1) .. 8 {
