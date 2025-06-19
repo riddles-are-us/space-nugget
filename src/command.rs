@@ -102,7 +102,7 @@ impl CommandHandler for Activity {
                         if player.data.inventory.len() >= player.data.inventory_size as usize {
                             Err(PLAYER_NOT_ENOUGH_INVENTORY)
                         } else {
-                            player.data.cost_balance(5000)?;
+                            player.data.cost_balance(4000)?;
                             let mut global = GLOBAL_STATE.0.borrow_mut();
                             let mut nugget = NuggetInfo::new_object(NuggetInfo::new(global.total, rand[1]), global.total);
                             nugget.data.compute_sysprice();

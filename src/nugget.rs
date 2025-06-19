@@ -42,14 +42,14 @@ impl StorageData for NuggetInfo {
 }
 
 const EXPLORE_WEIGHT:[u8; 64] = [
-    2,2,1,1,0,0,0,0,
-    3,2,2,1,1,0,0,0,
-    4,3,2,2,1,1,0,0,
-    5,4,3,2,2,1,1,0,
-    6,5,4,3,2,2,1,1,
-    7,6,5,4,3,2,2,1,
-    8,7,6,5,4,3,2,2,
-    9,8,7,6,5,4,3,2,
+    2,2,2,1,1,0,0,0,
+    3,2,2,2,1,1,0,0,
+    4,3,2,2,2,1,1,0,
+    5,4,3,2,2,2,1,1,
+    6,5,4,3,3,2,2,1,
+    7,6,5,4,3,3,2,2,
+    8,7,6,5,4,3,3,2,
+    9,8,7,6,5,4,3,3,
 ];
 
 impl NuggetInfo {
@@ -66,11 +66,19 @@ impl NuggetInfo {
     }
 
     pub fn explore(&mut self, rand: u64) -> Result<(), u32> {
-        let r = EXPLORE_WEIGHT[(rand % 64) as usize ];
+        let mut i = 0;
+        let plus_pos = self.feature as usize;
         for c in self.attributes.iter_mut() {
             if *c == 0 {
-                *c = r + 1;
+                if i < plus_pos + 1 {
+                    *c = ((rand % 64) as u8) + 1;
+                } else {
+                    let r = EXPLORE_WEIGHT[(rand % 64) as usize ];
+                    *c = r + 1;
+                }
                 return Ok(())
+            } else {
+                i += 1;
             }
         }
         Err(ERROR_NUGGET_ATTRIBUTES_ALL_EXPLORED)
