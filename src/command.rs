@@ -119,7 +119,7 @@ impl CommandHandler for Activity {
                             global.total += 1;
                             player.data.inventory.push(nugget.data.id);
                             player.store();
-                            GLOBAL_STATE.0.borrow_mut().cash -= 5000;
+                            global.cash -= 5000;
                             Ok(())
                         }
                     },
