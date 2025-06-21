@@ -29,6 +29,8 @@ pub struct GlobalState {
 pub struct QueryState {
     total: u64,
     counter: u64,
+    treasure: u64,
+    cash: u64,
 }
 
 const TICK: u64 = 0;
@@ -59,7 +61,9 @@ impl GlobalState {
     pub fn snapshot() -> String {
         let total = GLOBAL_STATE.0.borrow().total;
         let counter = GLOBAL_STATE.0.borrow().counter;
-        serde_json::to_string(&QueryState { counter, total}).unwrap()
+        let treasure = GLOBAL_STATE.0.borrow().treasure;
+        let cash = GLOBAL_STATE.0.borrow().cash;
+        serde_json::to_string(&QueryState { counter, total, treasure, cash}).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
