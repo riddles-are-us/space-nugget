@@ -190,7 +190,7 @@ impl Transaction {
             Some(_) => Err(ERROR_PLAYER_ALREADY_EXIST),
             None => {
                 let mut player = Player::new(pkey);
-                player.data.balance = 100000;
+                player.data.balance = 0;
                 player.store();
                 Ok(())
             }
