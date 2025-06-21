@@ -21,6 +21,8 @@ pub struct GlobalState {
     pub total: u64,
     pub counter: u64,
     pub txsize: u64,
+    pub treasure: u64,
+    pub cash: u64,
 }
 
 #[derive(Serialize)]
@@ -49,6 +51,8 @@ impl GlobalState {
             total: 0,
             counter: 0,
             txsize: 0,
+            treasure: 0,
+            cash: 0,
         }
     }
 
@@ -88,6 +92,8 @@ impl GlobalState {
         let mut v = vec![];
         v.push(self.counter);
         v.push(self.total);
+        v.push(self.treasure);
+        v.push(self.cash);
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
     }
@@ -99,8 +105,12 @@ impl GlobalState {
             let mut u64data = data.iter_mut();
             let counter = *u64data.next().unwrap();
             let total = *u64data.next().unwrap();
+            let treasure = *u64data.next().unwrap();
+            let cash = *u64data.next().unwrap();
             self.counter = counter;
             self.total = total;
+            self.treasure = treasure;
+            self.cash = cash;
         }
     }
 

@@ -3,7 +3,7 @@ use crate::player::PlayerData;
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_convention::BidInfo;
 use zkwasm_rest_convention::IndexedObject;
-use zkwasm_rest_convention::WithBalance;
+use zkwasm_rest_convention::Wrapped;
 use zkwasm_rest_convention::MarketInfo;
 use zkwasm_rest_convention::BidObject;
 use std::marker::PhantomData;
@@ -138,25 +138,19 @@ pub fn settle(player: &mut Player<PlayerData>, mid: u64, counter: u64) -> Result
     }
 }
 
-pub fn list(player: &mut Player<PlayerData>, oid: u64, askprice: u64) -> Result<(), u32> {
-    let mut nugget = NuggetInfo::get_object(oid).unwrap();
-    if nugget.data.marketid != 0 {
-        Err(NUGGET_IN_USE)
-    } else {
-        player.data.cost_balance(500)?;
-        let mut global = GLOBAL_STATE.0.borrow_mut();
-        // we should not fail after this point
-        let market_id = global.total;
-        global.total += 1;
-        nugget.data.marketid = market_id;
-        let market_nugget = MarketNugget::new(market_id, askprice, 0, None, nugget.data.clone(), player.player_id);
-        let marketinfo = MarketNugget::new_object(market_nugget, market_id);
-        nugget.store();
-        marketinfo.store();
-        NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
-        MarketNugget::emit_event(MARKET_INFO, &marketinfo.data);
-        Ok(())
-    }
+pub fn list(player: &mut Player<PlayerData>, nugget: &mut Wrapped<NuggetInfo>, askprice: u64) -> Result<(), u32> {
+    let mut global = GLOBAL_STATE.0.borrow_mut();
+    // we should not fail after this point
+    let market_id = global.total;
+    global.total += 1;
+    nugget.data.marketid = market_id;
+    let market_nugget = MarketNugget::new(market_id, askprice, 0, None, nugget.data.clone(), player.player_id);
+    let marketinfo = MarketNugget::new_object(market_nugget, market_id);
+    nugget.store();
+    marketinfo.store();
+    NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
+    MarketNugget::emit_event(MARKET_INFO, &marketinfo.data);
+    Ok(())
 }
 
 

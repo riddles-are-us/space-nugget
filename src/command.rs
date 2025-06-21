@@ -1,4 +1,3 @@
-use crate::market::MarketNugget;
 use crate::market::bid;
 use crate::market::settle;
 use crate::market::list;
@@ -11,7 +10,7 @@ use crate::settlement::SettlementInfo;
 use crate::player::GamePlayer;
 use crate::state::GLOBAL_STATE;
 use crate::error::*;
-use crate::config::{NUGGET_INFO, MARKET_INFO};
+use crate::config::NUGGET_INFO;
 
 #[derive (Clone)]
 pub enum Command {
@@ -44,13 +43,19 @@ impl CommandHandler for Withdraw {
                 player.check_and_inc_nonce(nonce);
                 let balance = player.data.balance;
                 let amount = self.data[0] & 0xffffffff;
-                unsafe { require(balance >= amount) };
-                player.data.balance -= amount;
-                let withdrawinfo =
-                    WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
-                SettlementInfo::append_settlement(withdrawinfo);
-                player.store();
-                Ok(())
+                if amount > GLOBAL_STATE.0.borrow().treasure {
+                    Err(NOT_ENOUGH_TREASURE)
+                } else {
+                    unsafe { require(balance >= amount) };
+                    player.data.balance -= amount;
+                    let withdrawinfo =
+                        WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
+                    SettlementInfo::append_settlement(withdrawinfo);
+                    player.store();
+                    GLOBAL_STATE.0.borrow_mut().cash -= amount;
+                    GLOBAL_STATE.0.borrow_mut().treasure -= amount;
+                    Ok(())
+                }
             }
         }
     }
@@ -69,9 +74,12 @@ impl CommandHandler for Deposit {
         match player.as_mut() {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
-                player.data.balance += self.data[2];
+                let amount = self.data[2];
+                player.data.balance += amount;
                 player.store();
                 admin.store();
+                GLOBAL_STATE.0.borrow_mut().cash += amount;
+                GLOBAL_STATE.0.borrow_mut().treasure += amount;
                 Ok(())
             }
         }
@@ -102,7 +110,7 @@ impl CommandHandler for Activity {
                         if player.data.inventory.len() >= player.data.inventory_size as usize {
                             Err(PLAYER_NOT_ENOUGH_INVENTORY)
                         } else {
-                            player.data.cost_balance(4000)?;
+                            player.data.cost_balance(5000)?;
                             let mut global = GLOBAL_STATE.0.borrow_mut();
                             let mut nugget = NuggetInfo::new_object(NuggetInfo::new(global.total, rand[1]), global.total);
                             nugget.data.compute_sysprice();
@@ -111,6 +119,7 @@ impl CommandHandler for Activity {
                             global.total += 1;
                             player.data.inventory.push(nugget.data.id);
                             player.store();
+                            GLOBAL_STATE.0.borrow_mut().cash -= 5000;
                             Ok(())
                         }
                     },
@@ -124,12 +133,14 @@ impl CommandHandler for Activity {
                             if nugget.data.marketid != 0 {
                                 Err(NUGGET_IN_USE)
                             } else {
-                                player.data.cost_balance(nugget.data.sysprice / 4)?;
+                                let price = nugget.data.sysprice / 4;
+                                player.data.cost_balance(price)?;
                                 nugget.data.explore(rand[2])?;
                                 nugget.data.compute_sysprice();
                                 NuggetInfo::emit_event(NUGGET_INFO, &nugget.data);
                                 nugget.store();
                                 player.store();
+                                GLOBAL_STATE.0.borrow_mut().cash -= price;
                                 Ok(())
                             }
                         }
@@ -147,6 +158,7 @@ impl CommandHandler for Activity {
                             player.data.inventory.swap_remove(*index as usize);
                             nugget.store();
                             player.store();
+                            GLOBAL_STATE.0.borrow_mut().cash += nugget.data.sysprice;
                             Ok(())
                         }
                     },
@@ -156,10 +168,17 @@ impl CommandHandler for Activity {
                             Err(INVALID_NUGGET_INDEX)
                         } else {
                             let nuggetid = player.data.inventory[*index as usize];
-                            list(player, nuggetid, *askprice)?;
-                            player.data.inventory.swap_remove(*index as usize); // remove
-                            player.store();
-                            Ok(())
+                            let mut nugget = NuggetInfo::get_object(nuggetid).unwrap();
+                            if nugget.data.marketid != 0 {
+                                Err(NUGGET_IN_USE)
+                            } else {
+                                player.data.cost_balance(500)?;
+                                list(player, &mut nugget, *askprice)?;
+                                player.data.inventory.swap_remove(*index as usize); // remove
+                                player.store();
+                                GLOBAL_STATE.0.borrow_mut().cash -= 500;
+                                Ok(())
+                            }
                         }
                     },
 
