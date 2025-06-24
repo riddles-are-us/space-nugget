@@ -137,6 +137,34 @@ function extra(app: Express) {
     }
   });
 
+  app.get("/data/ranks", async (req: any, res) => {
+    try {
+      const max = 100;
+      const skip = Math.min(parseInt(req.query.skip) || 0, max);
+      const limit = Math.min(parseInt(req.query.limit) || 30, max - skip);
+      const [count, doc] = await Promise.all([
+        MarketObjectModel.countDocuments(),
+        MarketObjectModel.find()
+          .sort({ "object.sysprice": -1 })
+          .skip(skip)
+          .limit(limit),
+      ]);
+
+      const data = doc.map((d) => {
+        return docToJSON(d);
+      });
+      console.log(data);
+      res.status(201).send({
+        success: true,
+        data: data,
+        count: Math.min(count, max),
+      });
+    } catch (e) {
+      console.log(e);
+      res.status(500).send();
+    }
+  });
+
   app.get("/data/nuggets", async (req: any, res) => {
     try {
       let rawIds = req.query.ids;
