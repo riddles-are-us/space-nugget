@@ -3,7 +3,6 @@ import {
   Service,
   Event,
   EventModel,
-  TxStateManager,
 } from "zkwasm-ts-server";
 import {
   NuggetObjectModel,
@@ -12,15 +11,10 @@ import {
   docToJSON,
 } from "./info.js";
 import { Express } from "express";
-import { merkleRootToBeHexString } from "zkwasm-ts-server/src/lib.js";
 import mongoose from "mongoose";
 
 const service = new Service(eventCallback, batchedCallback, extra);
 await service.initialize();
-
-let txStateManager = new TxStateManager(
-  merkleRootToBeHexString(service.merkleRoot)
-);
 
 function extra(app: Express) {
   app.get("/data/nugget/:nid", async (req: any, res) => {
@@ -194,11 +188,6 @@ const EVENT_POSITION_UPDATE = 1;
 const EVENT_NUGGET_UPDATE = 2;
 
 async function bootstrap(merkleRoot: string): Promise<TxWitness[]> {
-  /*
-       const txs = await txStateManager.getTxFromCommit(merkleRoot);
-       console.log("tsx in bootstrap:", txs);
-       return txs;
-       */
   return [];
 }
 
@@ -207,7 +196,7 @@ async function batchedCallback(
   preMerkle: string,
   postMerkle: string
 ) {
-  await txStateManager.moveToCommit(postMerkle);
+    return;
 }
 
 async function eventCallback(arg: TxWitness, data: BigUint64Array) {
