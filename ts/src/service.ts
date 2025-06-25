@@ -143,11 +143,8 @@ function extra(app: Express) {
       const skip = Math.min(parseInt(req.query.skip) || 0, max);
       const limit = Math.min(parseInt(req.query.limit) || 30, max - skip);
       const [count, doc] = await Promise.all([
-        MarketObjectModel.countDocuments(),
-        MarketObjectModel.find()
-          .sort({ "object.sysprice": -1 })
-          .skip(skip)
-          .limit(limit),
+        NuggetObjectModel.countDocuments(),
+        NuggetObjectModel.find().sort({ sysprice: -1 }).skip(skip).limit(limit),
       ]);
 
       const data = doc.map((d) => {
