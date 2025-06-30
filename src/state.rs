@@ -49,6 +49,7 @@ const BID_NUGGET: u64 = 6;
 const CREATE_NUGGET: u64 = 7;
 const RECYCLE_NUGGET: u64 = 8;
 const LIST_NUGGET: u64 = 9;
+const CLAIM_REWARD: u64 = 10;
 
 
 
@@ -192,6 +193,8 @@ impl Transaction {
             Command::Activity (Activity::Bid(params[1], params[2]))
         } else if command == CREATE_NUGGET {
             Command::Activity (Activity::Create)
+        } else if command == CLAIM_REWARD {
+            Command::Activity (Activity::Claim(params[1]))
         } else {
             unsafe {zkwasm_rust_sdk::require(command == TICK)};
             Command::Tick
@@ -208,7 +211,7 @@ impl Transaction {
             Some(_) => Err(ERROR_PLAYER_ALREADY_EXIST),
             None => {
                 let mut player = Player::new(pkey);
-                player.data.balance = 10000000;
+                player.data.balance = 0;
                 player.store();
                 Ok(())
             }

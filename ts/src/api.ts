@@ -43,7 +43,12 @@ export const commandSpec = {
   LIST_NUGGET: {
       id: 9n,
       args: ["index", "price"]
+  },
+  CLAIM_REWARD: {
+      id: 10n,
+      args: ["index"]
   }
+
 }
 
 export class Player extends PlayerConvention {
