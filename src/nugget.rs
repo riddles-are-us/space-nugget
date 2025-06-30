@@ -14,14 +14,33 @@ pub struct NuggetInfo {
     pub marketid: u64, // the associated makret id for this object. None if zero
 }
 
+#[derive(Clone, Serialize, Default)]
+pub struct LeaderboardInfo {
+    pub id: u64,
+    pub attributes: [u8; 8],
+    pub feature: u64,
+    pub sysprice: u64,
+    pub start: u64,
+    pub owner: [u64; 2]
+}
+
+#[derive(Clone, Serialize, Default)]
 pub struct Leaderboard {
-    pub nuggets: Vec<NuggetInfo>,
+    pub nuggets: Vec<LeaderboardInfo>,
 }
 
 impl Leaderboard {
-    pub fn update_board(&mut self, nugget: &NuggetInfo) {
-        if let Some(pos) = self.nuggets.iter().position(|&x| x.sysprice < nugget.sysprice) {
-            self.nuggets.insert(pos, nugget.clone());
+    pub fn update_board(&mut self, nugget: &NuggetInfo, owner: [u64; 2], count: u64 ) {
+        if let Some(pos) = self.nuggets.iter().position(|x| x.sysprice < nugget.sysprice) {
+            let linfo = LeaderboardInfo {
+                id: nugget.id,
+                attributes: nugget.attributes,
+                feature: nugget.feature,
+                sysprice: nugget.sysprice,
+                owner,
+                start: count,
+            };
+            self.nuggets.insert(pos, linfo);
             if self.nuggets.len() > 8 {
                 self.nuggets.pop();
             }
@@ -53,6 +72,34 @@ impl StorageData for NuggetInfo {
         data.push(self.feature);
         data.push(self.sysprice);
         data.push(self.marketid);
+    }
+}
+
+impl StorageData for LeaderboardInfo {
+    fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        let id = *u64data.next().unwrap();
+        let attributes = (*u64data.next().unwrap()).to_le_bytes();
+        let feature = *u64data.next().unwrap();
+        let sysprice = *u64data.next().unwrap();
+        let start = *u64data.next().unwrap();
+        let owner = [*u64data.next().unwrap(), *u64data.next().unwrap()];
+        LeaderboardInfo {
+            id,
+            attributes,
+            feature,
+            sysprice,
+            start,
+            owner
+        }
+    }
+    fn to_data(&self, data: &mut Vec<u64>) {
+        data.push(self.id);
+        data.push(u64::from_le_bytes(self.attributes));
+        data.push(self.feature);
+        data.push(self.sysprice);
+        data.push(self.start);
+        data.push(self.owner[0]);
+        data.push(self.owner[1]);
     }
 }
 

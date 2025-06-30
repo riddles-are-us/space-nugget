@@ -2,9 +2,12 @@ use crate::config::ADMIN_PUBKEY;
 use crate::player::{Owner, GamePlayer};
 use crate::settlement::SettlementInfo;
 use crate::Player;
+use crate::nugget::Leaderboard;
+use crate::nugget::LeaderboardInfo;
 use serde::Serialize;
 use std::cell::RefCell;
 use zkwasm_rest_abi::MERKLE_MAP;
+use zkwasm_rest_abi::StorageData;
 use zkwasm_rust_sdk::require;
 use zkwasm_rest_abi::enforce;
 use crate::command::Command;
@@ -23,6 +26,7 @@ pub struct GlobalState {
     pub txsize: u64,
     pub treasure: u64,
     pub cash: u64,
+    pub leaderboard: Leaderboard,
 }
 
 #[derive(Serialize)]
@@ -31,6 +35,7 @@ pub struct QueryState {
     counter: u64,
     treasure: u64,
     cash: u64,
+    leaderboard: Leaderboard,
 }
 
 const TICK: u64 = 0;
@@ -55,6 +60,7 @@ impl GlobalState {
             txsize: 0,
             treasure: 0,
             cash: 0,
+            leaderboard: Leaderboard::default(),
         }
     }
 
@@ -63,7 +69,8 @@ impl GlobalState {
         let counter = GLOBAL_STATE.0.borrow().counter;
         let treasure = GLOBAL_STATE.0.borrow().treasure;
         let cash = GLOBAL_STATE.0.borrow().cash;
-        serde_json::to_string(&QueryState { counter, total, treasure, cash}).unwrap()
+        let leaderboard = GLOBAL_STATE.0.borrow().leaderboard.clone();
+        serde_json::to_string(&QueryState { counter, total, treasure, cash, leaderboard}).unwrap()
     }
 
     pub fn get_state(pid: Vec<u64>) -> String {
@@ -98,6 +105,10 @@ impl GlobalState {
         v.push(self.total);
         v.push(self.treasure);
         v.push(self.cash);
+        v.push(self.leaderboard.nuggets.len() as u64);
+        for nugget in self.leaderboard.nuggets.iter() {
+            nugget.to_data(&mut v);
+        }
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
     }
@@ -115,6 +126,13 @@ impl GlobalState {
             self.total = total;
             self.treasure = treasure;
             self.cash = cash;
+            if let Some(l) = u64data.next() {
+                for _ in 0..(*l) {
+                    self.leaderboard.nuggets.push(LeaderboardInfo::from_data(&mut u64data));
+                }
+            } else {
+                ()
+            }
         }
     }
 

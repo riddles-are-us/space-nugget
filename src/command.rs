@@ -95,6 +95,7 @@ pub enum Activity {
     Recycle(u64),
     Explore(u64),
     List(u64, u64),
+    Claim(u64),
 }
 
 
@@ -159,6 +160,7 @@ impl CommandHandler for Activity {
                             nugget.store();
                             player.store();
                             GLOBAL_STATE.0.borrow_mut().cash += nugget.data.sysprice;
+                            GLOBAL_STATE.0.borrow_mut().leaderboard.update_board(&nugget.data, player.player_id.clone(), counter);
                             Ok(())
                         }
                     },
@@ -182,6 +184,26 @@ impl CommandHandler for Activity {
                         }
                     },
 
+                    Activity::Claim(index) => {
+                        let mut s = GLOBAL_STATE.0.borrow_mut();
+                        if let Some(nugget) = s.leaderboard.nuggets.get(*index as usize) {
+                            if nugget.owner != player.player_id {
+                                Err(INVALID_NUGGET_INDEX)
+                            } else {
+                                let c = nugget.start;
+                                if counter > c {
+                                    let reward = counter - c;
+                                    s.leaderboard.nuggets.swap_remove(*index as usize);
+                                    player.data.inc_balance(reward);
+                                    Ok(())
+                                } else {
+                                    Err(INVALID_NUGGET_INDEX)
+                                }
+                            }
+                        } else {
+                            Err(INVALID_NUGGET_INDEX)
+                        }
+                    },
 
                     Activity::Sell(index) => {
                         settle(player, *index, counter)
