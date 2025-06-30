@@ -31,20 +31,22 @@ pub struct Leaderboard {
 
 impl Leaderboard {
     pub fn update_board(&mut self, nugget: &NuggetInfo, owner: [u64; 2], count: u64 ) {
+        let linfo = LeaderboardInfo {
+            id: nugget.id,
+            attributes: nugget.attributes,
+            feature: nugget.feature,
+            sysprice: nugget.sysprice,
+            owner,
+            start: count,
+        };
         if let Some(pos) = self.nuggets.iter().position(|x| x.sysprice < nugget.sysprice) {
-            let linfo = LeaderboardInfo {
-                id: nugget.id,
-                attributes: nugget.attributes,
-                feature: nugget.feature,
-                sysprice: nugget.sysprice,
-                owner,
-                start: count,
-            };
             self.nuggets.insert(pos, linfo);
             if self.nuggets.len() > 8 {
                 self.nuggets.pop();
             }
-        };
+        } else if self.nuggets.len() < 8 {
+            self.nuggets.push(linfo)
+        }
     }
 }
 
@@ -103,7 +105,7 @@ impl StorageData for LeaderboardInfo {
     }
 }
 
-const EXPLORE_WEIGHT:[u8; 64] = [
+const EXPLORE_WEIGHT_HIGH:[u8; 64] = [
     2,2,1,1,0,0,0,0,
     2,2,2,1,1,0,0,0,
     3,2,2,2,1,1,1,0,
@@ -113,6 +115,19 @@ const EXPLORE_WEIGHT:[u8; 64] = [
     7,6,5,4,3,3,3,2,
     9,8,6,5,4,4,3,3,
 ];
+
+const EXPLORE_WEIGHT_LOW:[u8; 64] = [
+    2,2,2,1,1,1,0,0,
+    2,2,2,2,1,1,1,0,
+    3,2,2,2,2,1,1,1,
+    4,3,2,2,2,2,1,1,
+    5,4,3,3,2,2,2,1,
+    6,5,4,4,3,3,2,2,
+    8,7,6,5,4,3,3,2,
+    9,8,7,6,5,4,3,3,
+];
+
+
 
 impl NuggetInfo {
     pub fn new(id: u64, rand: u64) -> Self {
@@ -135,8 +150,13 @@ impl NuggetInfo {
                 if i < plus_pos + 1 {
                     *c = ((rand % 64) as u8) + 1;
                 } else {
-                    let r = EXPLORE_WEIGHT[(rand % 64) as usize ];
-                    *c = r + 1;
+                    if plus_pos > 3 {
+                        let r = EXPLORE_WEIGHT_LOW[(rand % 64) as usize ];
+                        *c = r + 1;
+                    } else {
+                        let r = EXPLORE_WEIGHT_HIGH[(rand % 64) as usize ];
+                        *c = r + 1;
+                    }
                 }
                 return Ok(())
             } else {
