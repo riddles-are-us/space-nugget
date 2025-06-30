@@ -14,6 +14,21 @@ pub struct NuggetInfo {
     pub marketid: u64, // the associated makret id for this object. None if zero
 }
 
+pub struct Leaderboard {
+    pub nuggets: Vec<NuggetInfo>,
+}
+
+impl Leaderboard {
+    pub fn update_board(&mut self, nugget: &NuggetInfo) {
+        if let Some(pos) = self.nuggets.iter().position(|&x| x.sysprice < nugget.sysprice) {
+            self.nuggets.insert(pos, nugget.clone());
+            if self.nuggets.len() > 8 {
+                self.nuggets.pop();
+            }
+        };
+    }
+}
+
 impl StorageData for NuggetInfo {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         let id = *u64data.next().unwrap();
@@ -42,14 +57,14 @@ impl StorageData for NuggetInfo {
 }
 
 const EXPLORE_WEIGHT:[u8; 64] = [
+    2,2,1,1,0,0,0,0,
     2,2,2,1,1,0,0,0,
-    3,2,2,2,1,1,0,0,
-    4,3,2,2,2,1,1,0,
-    5,4,3,2,2,2,1,1,
-    6,5,4,3,3,2,2,1,
-    7,6,5,4,3,3,2,2,
-    8,7,6,5,4,3,3,2,
-    9,8,7,6,5,4,3,3,
+    3,2,2,2,1,1,1,0,
+    4,3,2,2,2,1,1,1,
+    4,4,3,3,2,2,1,1,
+    5,5,4,3,3,3,2,1,
+    7,6,5,4,3,3,3,2,
+    9,8,6,5,4,4,3,3,
 ];
 
 impl NuggetInfo {
