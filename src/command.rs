@@ -195,7 +195,7 @@ impl CommandHandler for Activity {
                                     let reward = counter - c;
                                     s.leaderboard.nuggets.remove(*index as usize);
                                     player.data.inc_balance(reward);
-                                    GLOBAL_STATE.0.borrow_mut().cash += reward;
+                                    s.cash += reward;
                                     Ok(())
                                 } else {
                                     Err(INVALID_NUGGET_INDEX)
