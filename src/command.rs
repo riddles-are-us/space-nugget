@@ -196,6 +196,7 @@ impl CommandHandler for Activity {
                                     s.leaderboard.nuggets.remove(*index as usize);
                                     player.data.inc_balance(reward);
                                     s.cash += reward;
+                                    player.store();
                                     Ok(())
                                 } else {
                                     Err(INVALID_NUGGET_INDEX)
