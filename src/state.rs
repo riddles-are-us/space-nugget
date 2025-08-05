@@ -17,6 +17,7 @@ use crate::command::Withdraw;
 use crate::command::CommandHandler;
 use crate::error::*;
 use zkwasm_rest_convention::clear_events;
+use zkwasm_rest_convention::WithBalance;
 
 
 #[derive(Serialize)]
@@ -220,6 +221,19 @@ impl Transaction {
 
     pub fn tick(&self) {
         GLOBAL_STATE.0.borrow_mut().counter += 1;
+        let c = GLOBAL_STATE.0.borrow().counter;
+        let nuggets = GLOBAL_STATE.0.borrow().leaderboard.nuggets.clone();
+        for n in nuggets {
+            if (c - n.start) > 12 * 60 * 24 * 7 {
+                let mut player = GamePlayer::get_from_pid(&n.owner).unwrap();
+                player.data.inc_balance(400000);
+                player.store();
+            }
+        }
+        GLOBAL_STATE.0.borrow_mut().leaderboard
+            .nuggets.retain(|nugget|
+                (c - nugget.start) < 12 * 60 * 24 * 7
+            );
     }
 
     pub fn inc_tx_number(&self) {
