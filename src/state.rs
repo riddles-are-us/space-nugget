@@ -225,7 +225,7 @@ impl Transaction {
         let nuggets = GLOBAL_STATE.0.borrow().leaderboard.nuggets.clone();
 
         for n in nuggets {
-            if (c - n.start) > 12 * 60 * 24 * 7 {
+            if (c - n.start) >= 12 * 60 * 24 * 7 {
                 let mut player = GamePlayer::get_from_pid(&n.owner).unwrap();
                 player.data.inc_balance(400000);
                 player.store();
