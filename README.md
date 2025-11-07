@@ -1,5 +1,7 @@
 # space nugget
 
+Game on BNB Chain
+
 ## commands:
 
 ```
